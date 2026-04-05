@@ -92,13 +92,13 @@ const STREAMER_COLORS = {
   우고님: "#000",
   아로AURO: "#d5889a",
   "랑께 님": "#ffd1af",
+  플레임: "#e2012d",
 
   // 대기
 
   //런?
   릴카: "#c0c4ff",
   매직박: "#ff6600",
-  플레임: "#e2012d",
   마뮤뮤: "#b9a4e9",
   포모나: "#FFFF66",
   코뚱잉: "#1870b9",
@@ -406,6 +406,7 @@ const RECORD_DATA = [
   },
   { name: "낭만숟가락1", gameTime: "7분 24.45초", tosTime: "10시간 53분 21초" },
   { name: "랑께 님", gameTime: "10분 35.51초", tosTime: "5시간 16분 16초" },
+  { name: "플레임", gameTime: "13분 11.19초", tosTime: "12시간 18분 3초" },
 ];
 
 const RETRY_DATA = [

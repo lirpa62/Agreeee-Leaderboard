@@ -328,7 +328,6 @@ const myChart = new Chart(ctx, {
           if (val.name === "미라이 of HANAVI🎈") return "right";
           if (val.name === "강소연🎈") return "right";
           if (val.name === "양아지") return "right";
-          if (val.name === "포키쨩") return "right";
           if (val.name === "울프") return "right";
           if (val.name === "코리수🎈") return "right";
           if (val.name === "앰비션") return "right";
@@ -391,6 +390,7 @@ const myChart = new Chart(ctx, {
           if (val.name === "두니주니") return "bottom";
           if (val.name === "라꼬미") return "bottom";
           if (val.name === "랑께 님") return "bottom";
+          if (val.name === "포키쨩") return "bottom";
 
           // 차트 이름 왼쪽으로
           if (val.name === "마우쥐") return "left";
