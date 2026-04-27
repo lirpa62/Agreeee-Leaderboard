@@ -279,6 +279,8 @@ const STREAMER_COLORS = {
   이하얀: "#FE5454",
   "청목 Chungmok": "#497247",
   슈네1: "#796c95",
+  "매화린 Maehwarin": "#F0B5E2",
+  이하얀: "#FE5454",
 };
 const DEFAULT_COLOR = "#333333";
 
@@ -407,6 +409,7 @@ const RECORD_DATA = [
   { name: "낭만숟가락1", gameTime: "7분 24.45초", tosTime: "10시간 53분 21초" },
   { name: "랑께 님", gameTime: "10분 35.51초", tosTime: "5시간 16분 16초" },
   { name: "플레임", gameTime: "13분 11.19초", tosTime: "12시간 18분 3초" },
+  { name: "자두뇨끼", gameTime: "22분 10.84초", tosTime: "11시간 33분 12초" },
 ];
 
 const RETRY_DATA = [
@@ -544,7 +547,6 @@ const SPEEDRUN_DATA = [
   { name: "레밀레기", gameTime: "3분 53.22초" },
   { name: "나츄", gameTime: "18분 26.97초" },
   { name: "하나빈 HANAVIN", gameTime: "9분 29.90초" },
-  { name: "자두뇨끼", gameTime: "22분 10.84초" }, // 11시간 33분 12초
   { name: "서논", gameTime: "1분 45.41초" },
   { name: "빙구르르릉", gameTime: "15분 59.48초" },
   { name: "조하구1", gameTime: "20분 51.51초" },
@@ -553,4 +555,5 @@ const SPEEDRUN_DATA = [
   { name: "이하얀", gameTime: "6분 9.23초" },
   { name: "청목 Chungmok", gameTime: "12분 27.83초" },
   { name: "슈네1", gameTime: "10분 25.44초" },
+  { name: "매화린 Maehwarin", gameTime: "14분 14.09초" }, // 9시간 13분 09초
 ];
