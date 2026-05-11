@@ -281,6 +281,7 @@ const STREAMER_COLORS = {
   슈네1: "#796c95",
   "매화린 Maehwarin": "#F0B5E2",
   이하얀: "#FE5454",
+  병병병: "#000000",
 };
 const DEFAULT_COLOR = "#333333";
 
@@ -556,4 +557,5 @@ const SPEEDRUN_DATA = [
   { name: "청목 Chungmok", gameTime: "12분 27.83초" },
   { name: "슈네1", gameTime: "10분 25.44초" },
   { name: "매화린 Maehwarin", gameTime: "14분 14.09초" }, // 9시간 13분 09초
+  { name: "병병병", gameTime: "18분 40.99초" }, // 1시간 48분 39초
 ];
