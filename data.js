@@ -246,6 +246,7 @@ const STREAMER_COLORS = {
   "아오토라 유키": "#C6E2FF",
   낭만숟가락1: "#FCB5ED",
   부쿠키: "#AEBEF1",
+  "쿠온 레이 Planeta": "#96D0F6",
 
   // 재도전
   "브이챠*": "#f37321",
@@ -539,6 +540,11 @@ const SHORTCUT_DATA = [
     tosTime: "14시간 59분 47초",
   },
   { name: "부쿠키", gameTime: "22분 4.09초", tosTime: "2시간 47분 31초" },
+  {
+    name: "쿠온 레이 Planeta",
+    gameTime: "28분 2.40초",
+    tosTime: "18시간 28분 11초",
+  },
 ];
 
 const SPEEDRUN_DATA = [
