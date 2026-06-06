@@ -425,6 +425,7 @@ const myChart = new Chart(ctx, {
           if (val.name === "우고님") return "left";
           if (val.name === "옌룡 Yenryong") return "left";
           if (val.name === "한동그라미") return "left";
+          if (val.name === "만득") return "left";
 
           // 차트 이름 위쪽으로(기본)
           return "top";

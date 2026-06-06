@@ -93,6 +93,7 @@ const STREAMER_COLORS = {
   아로AURO: "#d5889a",
   "랑께 님": "#ffd1af",
   플레임: "#e2012d",
+  녹두로: "#390",
 
   // 대기
 
@@ -412,6 +413,7 @@ const RECORD_DATA = [
   { name: "랑께 님", gameTime: "10분 35.51초", tosTime: "5시간 16분 16초" },
   { name: "플레임", gameTime: "13분 11.19초", tosTime: "12시간 18분 3초" },
   { name: "자두뇨끼", gameTime: "22분 10.84초", tosTime: "11시간 33분 12초" },
+  { name: "녹두로", gameTime: "16분 57.38초", tosTime: "3시간 38분 59초" },
 ];
 
 const RETRY_DATA = [
