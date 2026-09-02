@@ -751,6 +751,22 @@ function getDataBounds() {
   };
 }
 
+// 현재 보이는 영역 밖의 기록 수를 안내 문구로 갱신
+function updateZoomHint() {
+  const hint = document.getElementById("xZoomHint");
+  if (!isXpUi() || !isXZoomed) {
+    hint.textContent = "";
+    return;
+  }
+  const xa = myChart.scales.x;
+  const ya = myChart.scales.y;
+  const hidden = myChart.data.datasets[0].data.filter(
+    (d) => d.x < xa.min || d.x > xa.max || d.y < ya.min || d.y > ya.max,
+  ).length;
+  hint.textContent =
+    hidden > 0 ? `화면 밖 ${hidden}명 · 드래그로 이동` : "드래그로 이동";
+}
+
 function applyXZoom() {
   const btn = document.getElementById("xZoomBtn");
   const hint = document.getElementById("xZoomHint");
@@ -785,15 +801,8 @@ function applyXZoom() {
     }
     myChart.update();
 
-    // 현재 보이는 영역 밖의 기록 수를 안내
-    const xa = myChart.scales.x;
-    const ya = myChart.scales.y;
-    const hidden = myChart.data.datasets[0].data.filter(
-      (d) => d.x < xa.min || d.x > xa.max || d.y < ya.min || d.y > ya.max,
-    ).length;
     btn.textContent = "🔍 전체 보기 (18시간까지)";
-    hint.textContent =
-      hidden > 0 ? `화면 밖 ${hidden}명 · 드래그로 이동` : "드래그로 이동";
+    updateZoomHint();
   } else {
     panView = null;
     scales.x.min = undefined;
@@ -915,8 +924,8 @@ function applyXZoom() {
       setTimeout(() => {
         window.chartJustPanned = false;
       }, 0);
-      // 드래그로 화면이 바뀌었으면 안내 문구를 갱신
-      applyXZoom();
+      // 드래그로 화면이 바뀌었으면 안내 문구만 갱신
+      updateZoomHint();
     }
   });
 
@@ -937,6 +946,47 @@ function applyXZoom() {
     applyXZoom();
   });
 })();
+
+/* ---------------------------------------------------------
+   특정 기록이 확대 화면 밖에 있으면 그 위치로 뷰를 옮깁니다.
+   (명예의 전당 목록 클릭 / 스트리머 검색에서 호출)
+   --------------------------------------------------------- */
+function focusChartOn(dataItem) {
+  // 구버전이거나 전체 보기면 이미 다 보이므로 이동 불필요
+  if (!isXpUi() || !isXZoomed || !dataItem) return;
+
+  const xa = myChart.scales.x;
+  const ya = myChart.scales.y;
+
+  // 가장자리에 딱 붙지 않도록 약간의 여유를 둡니다
+  const xMargin = (xa.max - xa.min) * 0.08;
+  const yMargin = (ya.max - ya.min) * 0.08;
+
+  const inView =
+    dataItem.x >= xa.min + xMargin &&
+    dataItem.x <= xa.max - xMargin &&
+    dataItem.y >= ya.min + yMargin &&
+    dataItem.y <= ya.max - yMargin;
+
+  if (inView) return;
+
+  // 현재 확대 배율을 유지한 채 해당 점을 중앙으로
+  const xSpan = xa.max - xa.min;
+  const ySpan = ya.max - ya.min;
+
+  panView = {
+    xMin: dataItem.x - xSpan / 2,
+    xMax: dataItem.x + xSpan / 2,
+    yMin: dataItem.y - ySpan / 2,
+    yMax: dataItem.y + ySpan / 2,
+  };
+
+  const scales = myChart.options.scales;
+  scales.x.min = panView.xMin;
+  scales.x.max = panView.xMax;
+  scales.y.min = panView.yMin;
+  scales.y.max = panView.yMax;
+}
 
 document.getElementById("xZoomBtn").addEventListener("click", function () {
   isXZoomed = !isXZoomed;
@@ -1003,18 +1053,23 @@ function renderRanking() {
         clearTimeout(chartFocusTimeout);
       }
 
-      // 2. 차트 하이라이트 & 툴팁 활성화
+      // 2. 확대 상태에서 화면 밖이면 해당 위치로 차트를 이동
+      focusChartOn(data);
+
+      // 3. 차트 하이라이트 & 툴팁 활성화
       activePoint = index;
       myChart.tooltip.setActiveElements([{ datasetIndex: 0, index: index }]);
       myChart.setActiveElements([{ datasetIndex: 0, index: index }]);
       myChart.update();
 
-      // 3. 3초 뒤에 포커스 해제 예약
+      // 4. 3초 뒤에 포커스 해제 예약
       chartFocusTimeout = setTimeout(() => {
         activePoint = null; // 점선(Crosshair) 제거
         myChart.tooltip.setActiveElements([]); // 툴팁 숨기기
         myChart.setActiveElements([]); // 점 활성화 해제
         myChart.update();
+        // 이동했다면 '화면 밖 N명' 안내를 갱신
+        updateZoomHint();
       }, 1500);
     };
 
