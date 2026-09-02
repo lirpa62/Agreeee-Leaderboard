@@ -16,6 +16,7 @@ const chzzk = require("./chzzk");
 const { validateSubmission, judgeFollowers } = require("./validate");
 const dataFile = require("./dataFile");
 const git = require("./git");
+const captcha = require("./captcha");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -124,6 +125,20 @@ function requireAdmin(req, res, next) {
 
 // ── 공개 API ────────────────────────────────────────────────────
 
+/**
+ * 폼 설정 — 캡차 사이트 키를 서버에서 내려줍니다.
+ * (사이트 키는 공개값이지만, 코드에 하드코딩하지 않고 서버 설정을 따르게 합니다)
+ */
+app.get("/api/config", (req, res) => {
+  res.json({
+    ok: true,
+    captcha: {
+      enabled: captcha.isEnabled(),
+      siteKey: process.env.TURNSTILE_SITE_KEY || "",
+    },
+  });
+});
+
 /** 채널 조회 미리보기 (폼에서 이름/URL 확인용) */
 app.get(
   "/api/channel",
@@ -146,6 +161,16 @@ app.post(
   "/api/submissions",
   rateLimit({ windowMs: 10 * 60_000, max: 5 }),
   async (req, res) => {
+    // 캡차를 가장 먼저 확인합니다.
+    // (봇이 치지직 API 조회까지 유발하지 않도록)
+    const captchaResult = await captcha.verify(
+      req.body?.captchaToken,
+      req.ip,
+    );
+    if (!captchaResult.ok) {
+      return res.status(400).json({ ok: false, errors: [captchaResult.reason] });
+    }
+
     const checked = validateSubmission(req.body || {});
     if (!checked.ok) {
       return res.status(400).json({ ok: false, errors: checked.errors });
@@ -323,6 +348,13 @@ if (require.main === module) {
     console.log(`관리자 화면      → http://localhost:${PORT}/admin/`);
     console.log(`data.js 경로     → ${dataFile.DATA_JS_PATH}`);
     console.log(`Git 자동 커밋    → ${git.AUTO_COMMIT ? "켜짐" : "꺼짐"}`);
+    console.log(`캡차(Turnstile)  → ${captcha.isEnabled() ? "켜짐" : "꺼짐"}`);
+    if (!captcha.isEnabled()) {
+      console.warn(
+        "  ⚠ TURNSTILE_SECRET 이 없어 캡차가 꺼져 있습니다.\n" +
+          "    공개 배포 전에 반드시 설정하세요. (server/README.md 참고)",
+      );
+    }
   });
 }
 

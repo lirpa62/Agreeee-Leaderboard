@@ -333,6 +333,17 @@ body {
   margin-top: 6px;
 }
 
+/* ── 캡차 ────────────────────────────────────────────── */
+.captcha-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.captcha-row[hidden] {
+  display: none;
+}
+
 /* ── 오류 / 완료 ─────────────────────────────────────── */
 .errors {
   background: #fff4f4;

@@ -36,6 +36,8 @@ node src/server.js
 | `ALLOWED_ORIGINS` | CORS 허용 출처 (쉼표 구분) |
 | `GIT_AUTO_COMMIT` | 승인 시 자동 커밋 (기본 false) |
 | `GIT_AUTO_PUSH` | 커밋 후 자동 푸시 (기본 false) |
+| `TURNSTILE_SITE_KEY` | 캡차 사이트 키 (공개값) |
+| `TURNSTILE_SECRET` | 캡차 시크릿 키 |
 
 처음에는 `GIT_AUTO_COMMIT=false` 로 두고 `git diff` 로 결과를 확인한 뒤,
 익숙해지면 켜시길 권합니다.
@@ -62,6 +64,41 @@ node src/server.js
 
 - `ADMIN_PASSWORD` 를 반드시 변경하고, HTTPS 뒤에서 운영하세요
   (쿠키에 `Secure` 가 붙도록 `NODE_ENV=production` 설정).
-- 공개 폼이므로 어뷰징 대비가 필요합니다. 현재 IP 기준 간단한 요청 제한만
-  들어 있으니, 실제 공개 전에 Cloudflare Turnstile 같은 캡차 추가를 권합니다.
 - `data/` (SQLite) 는 Git 에 올라가지 않습니다. 백업을 따로 챙기세요.
+
+## 캡차 (Cloudflare Turnstile)
+
+공개 폼이라 무차별 제출을 막기 위해 Turnstile 을 사용합니다. 무료이고
+대부분의 사용자는 클릭조차 하지 않습니다.
+
+**설정 방법**
+
+1. [Cloudflare 대시보드](https://dash.cloudflare.com) → Turnstile → 사이트 추가
+2. 도메인에 리더보드 주소(`agreeee-leaderboard.netlify.app`)를 등록
+3. 발급된 키를 `.env` 에 넣습니다.
+
+```
+TURNSTILE_SITE_KEY=0x4AAAAAAA...
+TURNSTILE_SECRET=0x4AAAAAAA...
+```
+
+사이트 키는 서버가 `GET /api/config` 로 내려주므로 폼 코드를 고칠 필요가 없습니다.
+
+**동작**
+
+- `TURNSTILE_SECRET` 이 없으면 캡차가 **꺼진 채로** 동작하며 서버 시작 시 경고가 뜹니다.
+  로컬 개발 편의를 위한 것이니 공개 배포 전에 반드시 설정하세요.
+- 검증은 다른 모든 처리보다 **먼저** 수행합니다. 봇이 치지직 API 조회나
+  DB 쓰기를 유발하지 못하게 하기 위함입니다.
+- Cloudflare 검증 서버에 연결하지 못하면 **제출을 거부**합니다.
+  (실패 시 통과시키면 캡차가 무력화되므로)
+- Turnstile 토큰은 1회용이라, 제출 실패 시 폼이 자동으로 재발급받습니다.
+
+**로컬 테스트용 키** (Cloudflare 공식 제공)
+
+| 용도 | 사이트 키 | 시크릿 키 |
+| --- | --- | --- |
+| 항상 통과 | `1x00000000000000000000AA` | `1x0000000000000000000000000000000AA` |
+| 항상 차단 | `2x00000000000000000000AB` | `2x0000000000000000000000000000000AA` |
+
+테스트 키를 쓰면 위젯이 더미로 렌더링되며 "테스트 전용입니다" 문구가 표시됩니다.

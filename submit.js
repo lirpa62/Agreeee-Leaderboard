@@ -8,6 +8,62 @@ const API_BASE =
 
 const $ = (id) => document.getElementById(id);
 
+/* ---------------------------------------------------------
+   캡차 (Cloudflare Turnstile)
+   서버가 켜져 있다고 알려줄 때만 위젯을 띄웁니다.
+   --------------------------------------------------------- */
+let captchaWidgetId = null;
+let captchaEnabled = false;
+
+function loadTurnstileScript() {
+  return new Promise((resolve, reject) => {
+    if (window.turnstile) return resolve();
+    const s = document.createElement("script");
+    s.src =
+      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+    s.async = true;
+    s.defer = true;
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Turnstile 로드 실패"));
+    document.head.appendChild(s);
+  });
+}
+
+async function initCaptcha() {
+  try {
+    const res = await fetch(`${API_BASE}/api/config`);
+    const json = await res.json();
+    const cfg = json?.captcha;
+    if (!cfg?.enabled || !cfg.siteKey) return; // 서버에서 꺼져 있으면 표시하지 않음
+
+    await loadTurnstileScript();
+    $("captchaRow").hidden = false;
+    captchaWidgetId = window.turnstile.render("#captchaWidget", {
+      sitekey: cfg.siteKey,
+      language: "ko",
+      // 만료되면 토큰을 비워 다시 인증하게 합니다.
+      "expired-callback": () => window.turnstile.reset(captchaWidgetId),
+    });
+    captchaEnabled = true;
+  } catch {
+    // 캡차를 띄우지 못해도 폼은 쓸 수 있게 둡니다.
+    // (서버가 캡차를 요구하면 제출 시 오류로 안내됩니다)
+  }
+}
+
+function getCaptchaToken() {
+  if (!captchaEnabled || !window.turnstile) return "";
+  return window.turnstile.getResponse(captchaWidgetId) || "";
+}
+
+function resetCaptcha() {
+  if (captchaEnabled && window.turnstile) {
+    window.turnstile.reset(captchaWidgetId);
+  }
+}
+
+initCaptcha();
+
 /* 리그에 따라 약관 시간 / 체크박스 표시 전환 */
 function syncKind() {
   const kind = document.querySelector('input[name="kind"]:checked').value;
@@ -109,8 +165,15 @@ $("submitForm").addEventListener("submit", async (e) => {
   const btn = $("submitBtn");
   const kind = document.querySelector('input[name="kind"]:checked').value;
 
+  // 캡차가 켜져 있는데 아직 인증하지 않았으면 서버에 보내기 전에 안내
+  if (captchaEnabled && !getCaptchaToken()) {
+    showErrors(["캡차 인증을 완료해 주세요."]);
+    return;
+  }
+
   const payload = {
     kind,
+    captchaToken: getCaptchaToken(),
     streamerName: $("streamerName").value.trim(),
     channelUrl: $("channelUrl").value.trim(),
     color: $("color").value.trim(),
@@ -147,6 +210,8 @@ $("submitForm").addEventListener("submit", async (e) => {
     const json = await res.json();
 
     if (!json.ok) {
+      // Turnstile 토큰은 1회용이므로 실패 시 반드시 재발급받아야 합니다.
+      resetCaptcha();
       showErrors(json.errors || [json.error || "제출에 실패했습니다."]);
       return;
     }
@@ -160,6 +225,7 @@ $("submitForm").addEventListener("submit", async (e) => {
         ? `접수 번호 #${json.id} · ${v.channelName} (팔로워 ${v.followerCount.toLocaleString()}명)`
         : `접수 번호 #${json.id}`;
   } catch {
+    resetCaptcha();
     showErrors([
       "제출 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
     ]);
@@ -172,6 +238,7 @@ $("submitForm").addEventListener("submit", async (e) => {
 $("againBtn").addEventListener("click", () => {
   $("submitForm").reset();
   $("channelResult").textContent = "";
+  resetCaptcha(); // 이전 토큰은 이미 사용됨
   syncKind();
   $("done").hidden = true;
   $("submitForm").hidden = false;
