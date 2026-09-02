@@ -24,6 +24,43 @@ function isHttpUrl(value) {
   }
 }
 
+function safeHost(value) {
+  try {
+    return new URL(String(value).trim()).hostname;
+  } catch {
+    return "";
+  }
+}
+
+/**
+ * 제출한 이름과 조회된 채널명이 다른지 판정합니다.
+ *
+ * 표기 차이는 정상인 경우가 많으므로(예: '니니아*', '다주🎈')
+ * 접미사·공백·대소문자를 정규화한 뒤 비교하고,
+ * 차단이 아니라 '경고'로만 씁니다.
+ */
+function compareNames(submitted, channelName) {
+  const norm = (s) =>
+    String(s || "")
+      .replace(/\*/g, "")
+      .replace(
+        /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,
+        "",
+      )
+      .replace(/\s+/g, "")
+      .trim()
+      .toLocaleLowerCase("ko-KR");
+
+  const a = norm(submitted);
+  const b = norm(channelName);
+
+  if (!b) return { match: "unknown" };
+  if (a === b) return { match: "same" };
+  // 한쪽이 다른 쪽을 포함하면 표기 차이일 가능성이 높습니다.
+  if (a.includes(b) || b.includes(a)) return { match: "similar" };
+  return { match: "different" };
+}
+
 /** 폼 입력 검증 → 정규화된 값 또는 오류 목록 */
 function validateSubmission(body) {
   const errors = [];
@@ -40,10 +77,16 @@ function validateSubmission(body) {
     errors.push("색상 코드는 #RRGGBB 형식이어야 합니다. (예: #00FFA3)");
   }
 
-  // 채널 URL 은 선택이지만 강력히 권장 (있으면 검증이 정확해짐)
+  // 채널 URL 은 필수입니다.
+  // 이름 검색만으로는 오매칭 위험이 큽니다.
+  // (예: '슈네1' → 팔로워 1명짜리 '슈네11', 동명 사칭 채널 존재)
   const channelUrl = String(body.channelUrl || "").trim();
-  if (channelUrl && !isHttpUrl(channelUrl)) {
+  if (!channelUrl) {
+    errors.push("치지직 채널 주소를 입력해 주세요.");
+  } else if (!isHttpUrl(channelUrl)) {
     errors.push("채널 주소가 올바른 URL 이 아닙니다.");
+  } else if (!/(^|\.)chzzk\.naver\.com$/i.test(safeHost(channelUrl))) {
+    errors.push("치지직 채널 주소(chzzk.naver.com)를 입력해 주세요.");
   }
 
   // 클리어 시간 (본 게임) — 필수
@@ -125,4 +168,10 @@ function judgeFollowers(kind, followerCount, verifyStatus) {
   };
 }
 
-module.exports = { validateSubmission, judgeFollowers, THRESHOLDS, isHttpUrl };
+module.exports = {
+  validateSubmission,
+  judgeFollowers,
+  compareNames,
+  THRESHOLDS,
+  isHttpUrl,
+};

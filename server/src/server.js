@@ -13,7 +13,7 @@ const express = require("express");
 
 const db = require("./db");
 const chzzk = require("./chzzk");
-const { validateSubmission, judgeFollowers } = require("./validate");
+const { validateSubmission, judgeFollowers, compareNames } = require("./validate");
 const dataFile = require("./dataFile");
 const git = require("./git");
 const captcha = require("./captcha");
@@ -246,6 +246,18 @@ app.post(
       verifyStatus,
     );
 
+    // 입력한 이름과 조회된 채널명이 다르면 검증 메모에 남깁니다.
+    // (차단하지 않습니다 — '니니아*' 처럼 표기가 다른 경우가 정상입니다)
+    const nameCheck = compareNames(v.streamerName, channel?.channelName);
+    if (nameCheck.match === "different") {
+      verifyNote = [
+        verifyNote,
+        `⚠️ 이름 불일치: 입력 '${v.streamerName}' ↔ 채널 '${channel.channelName}'`,
+      ]
+        .filter(Boolean)
+        .join(" / ");
+    }
+
     const id = db.insertSubmission({
       ...v,
       channelId: channel?.channelId || null,
@@ -343,13 +355,33 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
   }
 
   try {
+    // 관리자가 이름을 고쳐 승인할 수 있습니다. (오타·표기 정정)
+    // 값이 없으면 제출된 이름을 그대로 씁니다.
+    const overrideName = String(req.body?.name || "").trim();
+    const rawName = overrideName || sub.streamer_name;
+
+    // 리그별 표기 접미사(* / 🎈)를 붙입니다.
+    // 숏컷의 🎈는 '재도전도 함께 등록되는 경우'에만 붙습니다.
+    const finalName = dataFile.decorateName(rawName, {
+      isRetry: !!sub.is_retry,
+      isShortcut: !!sub.is_shortcut,
+      hasRetryToo: req.body?.hasRetryToo === true,
+    });
+
     const applied = dataFile.applySubmission({
-      name: sub.streamer_name,
+      name: finalName,
       gameTime: sub.game_time,
       tosTime: sub.tos_time,
       color: sub.color,
       arrayName: dataFile.arrayNameFor(sub),
     });
+
+    // 실제 등록된 이름을 DB 에도 반영해 두어야
+    // 나중에 승인 취소 시 같은 이름으로 찾을 수 있습니다.
+    if (finalName !== sub.streamer_name) {
+      db.updateStreamerName(sub.id, finalName);
+      sub.streamer_name = finalName;
+    }
 
     let gitResult = { committed: false, reason: "" };
     try {

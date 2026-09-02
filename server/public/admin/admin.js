@@ -27,6 +27,26 @@ function leagueOf(row) {
   return "🏆 명예의 전당";
 }
 
+/**
+ * 제출 이름과 조회된 채널명이 실질적으로 다른지 판정.
+ * 서버의 compareNames 와 같은 규칙을 씁니다.
+ * (접미사·공백·대소문자를 무시하고, 포함 관계면 표기 차이로 봄)
+ */
+function nameMismatch(row) {
+  if (!row.channel_name) return false;
+  const norm = (s) =>
+    String(s || "")
+      .replace(/\*/g, "")
+      .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu, "")
+      .replace(/\s+/g, "")
+      .trim()
+      .toLocaleLowerCase("ko-KR");
+  const a = norm(row.streamer_name);
+  const b = norm(row.channel_name);
+  if (!b || a === b) return false;
+  return !(a.includes(b) || b.includes(a));
+}
+
 function verdictOf(row) {
   // 서버가 저장해 둔 판정 문구에서 등급을 추정
   const note = row.verify_note || "";
@@ -60,7 +80,11 @@ function cardHtml(row) {
     <div class="card-body">
       <div class="field"><span class="k">클리어 회차</span><span class="v">${esc(row.game_time)}</span></div>
       <div class="field"><span class="k">이용약관</span><span class="v">${esc(row.tos_time || "—")}</span></div>
-      <div class="field"><span class="k">채널</span><span class="v">${esc(row.channel_name || "확정 못함")}</span></div>
+      <div class="field"><span class="k">채널</span><span class="v">${esc(row.channel_name || "확정 못함")}${
+        nameMismatch(row)
+          ? ` <span class="verdict fail">이름 불일치</span>`
+          : ""
+      }</span></div>
       <div class="field"><span class="k">팔로워</span><span class="v">${esc(follower)}
         <span class="verdict ${v.cls}">${v.text}</span></span></div>
       <div class="field full"><span class="k">검증 메모</span><span class="v">${esc(row.verify_note || "—")}</span></div>
@@ -82,10 +106,31 @@ function cardHtml(row) {
     <div class="card-actions">
       ${
         isPending
-          ? `<input class="xp-input note" placeholder="처리 메모 (선택)" />
-             <button type="button" class="xp-button" data-act="recheck">팔로워 재조회</button>
-             <button type="button" class="xp-button danger" data-act="reject">반려</button>
-             <button type="button" class="xp-button primary" data-act="approve">승인 → 반영</button>`
+          ? `<div class="approve-row">
+               <label class="approve-field">
+                 <span>등록될 이름</span>
+                 <input class="xp-input reg-name" value="${esc(row.streamer_name)}"
+                        placeholder="등록될 이름" />
+               </label>
+               ${
+                 row.is_shortcut
+                   ? `<label class="approve-check" title="재도전 기록도 함께 등록되는 경우에만 체크하세요">
+                        <input type="checkbox" class="has-retry" /> 재도전도 있음 (🎈 표시)
+                      </label>`
+                   : ""
+               }
+               ${
+                 row.is_retry
+                   ? `<span class="suffix-hint">재도전 리그 → 이름 뒤에 * 가 자동으로 붙습니다</span>`
+                   : ""
+               }
+             </div>
+             <div class="approve-row">
+               <input class="xp-input note" placeholder="처리 메모 (선택)" />
+               <button type="button" class="xp-button" data-act="recheck">팔로워 재조회</button>
+               <button type="button" class="xp-button danger" data-act="reject">반려</button>
+               <button type="button" class="xp-button primary" data-act="approve">승인 → 반영</button>
+             </div>`
           : `<span class="status-tag">${row.status === "approved" ? "승인됨" : "반려됨"}${
               row.reviewed_at ? ` · ${esc(row.reviewed_at)}` : ""
             }${
@@ -157,9 +202,28 @@ listEl.addEventListener("click", async (e) => {
   const note = card.querySelector(".note")?.value || "";
   const act = btn.dataset.act;
 
-  if (act === "approve" || act === "reject") {
-    const label = act === "approve" ? "승인" : "반려";
-    if (!confirm(`제출 #${id} 을(를) ${label} 처리할까요?`)) return;
+  // 승인 시 실제로 등록될 이름(접미사 포함)을 미리 보여주고 확인받습니다.
+  const regNameEl = card.querySelector(".reg-name");
+  const hasRetryEl = card.querySelector(".has-retry");
+  const regName = regNameEl ? regNameEl.value.trim() : "";
+  const hasRetryToo = !!(hasRetryEl && hasRetryEl.checked);
+
+  if (act === "approve") {
+    if (!regName) {
+      flash(card, "err", "등록될 이름을 입력해 주세요.");
+      return;
+    }
+    const isRetry = card.querySelector(".league")?.textContent.includes("재도전");
+    let preview = regName;
+    if (isRetry && !preview.includes("*")) preview += "*";
+    else if (hasRetryToo && !preview.includes("🎈")) preview += "🎈";
+
+    if (!confirm(`data.js 에 다음 이름으로 등록합니다.\n\n    ${preview}\n\n계속할까요?`))
+      return;
+  }
+
+  if (act === "reject") {
+    if (!confirm(`제출 #${id} 을(를) 반려 처리할까요?`)) return;
   }
 
   // 승인 취소는 사유에 따라 후속 처리가 달라집니다.
@@ -182,7 +246,12 @@ listEl.addEventListener("click", async (e) => {
     const res = await fetch(`/api/admin/submissions/${id}/${act}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note, reason: revertReason }),
+      body: JSON.stringify({
+        note,
+        reason: revertReason,
+        name: regName || undefined,
+        hasRetryToo,
+      }),
     });
     const json = await res.json();
 
@@ -210,7 +279,12 @@ listEl.addEventListener("click", async (e) => {
         : ` · ${g.reason || "커밋 안 함"}`;
 
     if (act === "approve") {
-      alert(`data.js 에 반영했습니다.${gitMsgOf(json.git)}`);
+      const added = json.applied?.added?.name;
+      alert(
+        `data.js 에 반영했습니다.` +
+          (added ? `\n등록된 이름: ${added}` : "") +
+          gitMsgOf(json.git),
+      );
     }
 
     if (act === "revert") {

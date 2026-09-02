@@ -123,10 +123,34 @@ $("checkChannelBtn").addEventListener("click", async () => {
 
     if (json.status === "exact" && json.channel) {
       const f = json.channel.followerCount;
-      out.textContent = `✅ ${json.channel.channelName} · 팔로워 ${
-        f != null ? f.toLocaleString() + "명" : "확인 불가"
-      }`;
-      out.className = "channel-result ok";
+      const followers =
+        f != null ? `${f.toLocaleString()}명` : "확인 불가";
+
+      // 입력한 이름과 조회된 채널명이 실질적으로 다르면 알려줍니다.
+      // (표기 차이는 흔하므로 차단하지 않고 안내만 합니다)
+      const norm = (s) =>
+        String(s || "")
+          .replace(/\*/g, "")
+          .replace(
+            /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{200D}]/gu,
+            "",
+          )
+          .replace(/\s+/g, "")
+          .trim()
+          .toLocaleLowerCase("ko-KR");
+      const a = norm(name);
+      const b = norm(json.channel.channelName);
+      const mismatch = a && b && a !== b && !a.includes(b) && !b.includes(a);
+
+      if (mismatch) {
+        out.textContent =
+          `⚠️ 입력하신 이름 '${name}' 과(와) 채널명 '${json.channel.channelName}' 이 다릅니다. ` +
+          `(팔로워 ${followers}) — 채널이 맞다면 그대로 제출하셔도 됩니다.`;
+        out.className = "channel-result warn";
+      } else {
+        out.textContent = `✅ ${json.channel.channelName} · 팔로워 ${followers}`;
+        out.className = "channel-result ok";
+      }
     } else if (json.candidates?.length) {
       out.textContent =
         `⚠️ 채널을 확정하지 못했습니다. 후보: ` +

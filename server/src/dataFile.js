@@ -95,21 +95,35 @@ function appendToArray(src, arrayName, item) {
   const after = src.slice(closeIdx);
 
   // 마지막 항목 뒤에 쉼표가 없으면 붙입니다.
-  // ⚠ 줄 끝 주석(`}, // 메모`)이 있을 수 있으므로 주석을 제외하고 판단해야 합니다.
-  //   그냥 붙이면 "// 1시간 48분 39초," 처럼 주석 안에 쉼표가 들어갑니다.
+  //
+  // ⚠ 두 가지 주석 형태를 모두 고려해야 합니다.
+  //   1) 줄 끝 주석:  `}, // 1시간 48분 39초`
+  //      → 주석 앞 코드에만 쉼표를 붙여야 합니다.
+  //   2) 통째로 주석인 줄:  `// { name: "계춘회*", ... },`
+  //      → 이 줄은 코드가 아니므로 건너뛰고, 그 위의 실제 코드 줄을 봐야 합니다.
+  //      실제 data.js 에 이런 템플릿 주석이 4개 있으며, 잘못 처리하면
+  //      `, // {...}` 가 되어 배열에 빈 요소가 생깁니다.
   const trimmedBefore = before.replace(/\s*$/, "");
   const lines = trimmedBefore.split("\n");
-  const lastLine = lines[lines.length - 1];
-  const codePart = stripLineComment(lastLine).replace(/\s*$/, "");
+
+  // 뒤에서부터 '코드가 있는' 마지막 줄을 찾습니다.
+  let idx = lines.length - 1;
+  while (idx >= 0 && stripLineComment(lines[idx]).trim() === "") {
+    idx--;
+  }
+  if (idx < 0) idx = lines.length - 1;
+
+  const targetLine = lines[idx];
+  const codePart = stripLineComment(targetLine).replace(/\s*$/, "");
   const needsComma = !codePart.endsWith(",") && !codePart.endsWith("[");
 
   if (needsComma) {
     // 주석은 그대로 두고 코드 부분에만 쉼표를 붙입니다.
-    const commentIdx = findLineCommentIndex(lastLine);
-    lines[lines.length - 1] =
+    const commentIdx = findLineCommentIndex(targetLine);
+    lines[idx] =
       commentIdx === -1
-        ? `${lastLine.replace(/\s*$/, "")},`
-        : `${lastLine.slice(0, commentIdx).replace(/\s*$/, "")}, ${lastLine
+        ? `${targetLine.replace(/\s*$/, "")},`
+        : `${targetLine.slice(0, commentIdx).replace(/\s*$/, "")}, ${targetLine
             .slice(commentIdx)
             .trim()}`;
   }
@@ -370,6 +384,42 @@ function revertSubmission(submission, filePath = DATA_JS_PATH) {
   return { removed: item, total: afterArr.length };
 }
 
+/**
+ * 리그별 이름 표기 규칙 (기존 data.js 실측 기준)
+ *
+ *  RETRY_DATA    : 13개 전부 이름 뒤에 '*'
+ *                  → 재도전으로 인정받았음을 표시
+ *  SHORTCUT_DATA : 78개 중 '🎈'는 13개뿐
+ *                  → 재도전에 성공한 사람에게만 붙습니다.
+ *                    같은 사람이 숏컷/재도전 두 리그에 모두 있을 때
+ *                    구분하기 위한 표시이며, 재도전하지 않은
+ *                    숏컷 유저 65명에게는 붙지 않습니다.
+ *  RECORD_DATA / SPEEDRUN_DATA : 접미사 없음
+ *
+ * 그래서 숏컷 제출에 무조건 🎈를 붙이면 안 되고,
+ * '재도전도 함께 등록되는 경우'에만 붙여야 합니다.
+ */
+function decorateName(rawName, { isRetry, isShortcut, hasRetryToo } = {}) {
+  // 이미 붙어 있으면 중복해서 붙이지 않습니다.
+  const base = String(rawName || "").trim();
+
+  if (isRetry) {
+    return base.includes("*") ? base : `${base}*`;
+  }
+  if (isShortcut && hasRetryToo) {
+    return base.includes("🎈") ? base : `${base}🎈`;
+  }
+  return base;
+}
+
+/** 표기용 접미사를 떼어낸 순수 이름 */
+function baseName(name) {
+  return String(name || "")
+    .replace(/\*/g, "")
+    .replace(/🎈/g, "")
+    .trim();
+}
+
 /** 제출 종류 → data.js 배열 이름 */
 function arrayNameFor(sub) {
   if (sub.kind === "speedrun") return "SPEEDRUN_DATA";
@@ -386,5 +436,7 @@ module.exports = {
   appendToArray,
   removeFromArray,
   arrayNameFor,
+  decorateName,
+  baseName,
   serializeItem,
 };

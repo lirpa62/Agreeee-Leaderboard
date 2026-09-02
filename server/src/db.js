@@ -139,6 +139,17 @@ function countByStatus() {
   return out;
 }
 
+/**
+ * 실제 등록된 이름으로 갱신합니다.
+ * 승인 시 관리자가 이름을 고치거나 접미사(*, 🎈)가 붙는 경우,
+ * 이 값을 저장해 두어야 승인 취소 때 같은 이름으로 찾을 수 있습니다.
+ */
+function updateStreamerName(id, name) {
+  return db
+    .prepare("UPDATE submissions SET streamer_name = ? WHERE id = ?")
+    .run(name, id);
+}
+
 /** 승인 취소 — 상태를 되돌리고 사유를 남깁니다. */
 function revertApproval(id, reason, adminNote) {
   return db
@@ -197,6 +208,7 @@ module.exports = {
   listSubmissions,
   getSubmission,
   setStatus,
+  updateStreamerName,
   revertApproval,
   getPublicStatus,
   listPendingPublic,
