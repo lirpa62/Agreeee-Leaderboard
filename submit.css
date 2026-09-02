@@ -1,0 +1,393 @@
+/* 기록 등록 요청 폼 — 리더보드 신버전과 같은 XP(Luna) 톤 */
+
+:root {
+  --xp-face: #ece9d8;
+  --xp-face-alt: #f5f4ea;
+  --xp-shadow: #aca899;
+  --xp-dark: #716f64;
+  --xp-title-1: #0058ee;
+  --xp-title-2: #3a93ff;
+  --xp-title-3: #0855dd;
+  --xp-blue-border: #0054e3;
+  --xp-font:
+    "Tahoma", "Pretendard Variable", "Pretendard", -apple-system,
+    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: var(--xp-font);
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 48px;
+  background: linear-gradient(
+      180deg,
+      #4b8bd4 0%,
+      #6ba7e4 30%,
+      #9ccbf0 46%,
+      #7fb04a 52%,
+      #558b2f 72%,
+      #3f6f22 100%
+    )
+    fixed;
+  min-height: 100vh;
+  font-size: 13px;
+  color: #000;
+}
+
+/* ── 창 ──────────────────────────────────────────────── */
+.xp-window {
+  max-width: 720px;
+  margin: 0 auto;
+  background: var(--xp-face);
+  border: 1px solid var(--xp-blue-border);
+  border-radius: 8px 8px 0 0;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 10px 30px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.xp-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 4px 0 8px;
+  background: linear-gradient(
+    180deg,
+    var(--xp-title-2) 0%,
+    var(--xp-title-1) 42%,
+    var(--xp-title-3) 88%,
+    #26a0ff 100%
+  );
+  border-bottom: 1px solid #003fc4;
+}
+
+.xp-titlebar-text {
+  flex: 1;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.55);
+}
+
+.xp-btn {
+  width: 21px;
+  height: 21px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  text-decoration: none;
+  background: linear-gradient(180deg, #5babff 0%, #1c65d8 55%, #0d4fbd 100%);
+}
+
+.xp-btn.close {
+  background: linear-gradient(180deg, #f7a08a 0%, #d5442a 45%, #a92d17 100%);
+}
+
+.xp-btn:hover {
+  filter: brightness(1.18);
+}
+
+.xp-window-body {
+  padding: 16px 18px 20px;
+}
+
+/* ── 안내 상자 ───────────────────────────────────────── */
+.xp-infobox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fff;
+  border: 1px solid var(--xp-shadow);
+  padding: 11px 13px;
+  margin-bottom: 16px;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.xp-info-icon {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #5babff, #0d4fbd);
+  color: #fff;
+  font-weight: bold;
+  font-style: italic;
+  display: grid;
+  place-items: center;
+}
+
+/* ── 그룹 박스 ───────────────────────────────────────── */
+.xp-group {
+  border: 1px solid var(--xp-shadow);
+  background: var(--xp-face-alt);
+  padding: 14px 14px 16px;
+  margin: 0 0 16px;
+}
+
+.xp-group > legend {
+  padding: 0 6px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #003399;
+}
+
+/* ── 입력 ────────────────────────────────────────────── */
+.field {
+  margin-bottom: 14px;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field > label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.field b {
+  color: #c00;
+}
+
+.xp-input {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 13px;
+  border: 1px solid var(--xp-dark);
+  background: #fff;
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.22);
+}
+
+.xp-input:focus {
+  outline: none;
+  border-color: var(--xp-blue-border);
+  box-shadow:
+    inset 1px 1px 1px rgba(0, 0, 0, 0.22),
+    0 0 3px rgba(0, 84, 227, 0.6);
+}
+
+.hint {
+  margin: 5px 0 0;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.6;
+}
+
+/* 시간 입력 */
+.time-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.xp-input.time {
+  width: 76px;
+  text-align: right;
+}
+
+.time-row span {
+  font-size: 12px;
+  color: #444;
+}
+
+/* 색상 */
+.color-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.color-row .xp-input {
+  flex: 1;
+}
+
+#colorPicker {
+  width: 40px;
+  height: 28px;
+  padding: 2px;
+  border: 1px solid var(--xp-dark);
+  background: #fff;
+  cursor: pointer;
+}
+
+/* 라디오 / 체크박스 */
+.radio,
+.check {
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 5px 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+  cursor: pointer;
+}
+
+.radio input,
+.check input {
+  margin: 2px 0 0;
+  cursor: pointer;
+}
+
+.checks {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #e0ddcd;
+}
+
+/* 채널 확인 결과 */
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  color: #0645ad;
+  text-decoration: underline;
+  cursor: pointer;
+  font-size: 11px;
+}
+
+.channel-result {
+  margin: 6px 0 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  min-height: 15px;
+}
+
+.channel-result.ok {
+  color: #1d4a18;
+  font-weight: bold;
+}
+
+.channel-result.warn {
+  color: #8a5a00;
+}
+
+/* ── 버튼 ────────────────────────────────────────────── */
+.xp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 96px;
+  padding: 6px 18px;
+  font-size: 12.5px;
+  color: #000;
+  text-decoration: none;
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #f2f1e8 45%,
+    #e3e0d0 55%,
+    #d6d2c2 100%
+  );
+  border: 1px solid #8e8d78;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px #fff;
+  cursor: pointer;
+}
+
+.xp-button:hover {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #fdf6d8 45%,
+    #f7e9a8 55%,
+    #f0dd8c 100%
+  );
+  border-color: #e0a900;
+}
+
+.xp-button.agree {
+  font-weight: bold;
+  color: #12420f;
+  border-color: #4b7d45;
+  background: linear-gradient(
+    180deg,
+    #fbfff9 0%,
+    #ddf0d5 45%,
+    #bfe3b2 55%,
+    #a5d495 100%
+  );
+}
+
+.xp-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.actions {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+/* ── 캡차 ────────────────────────────────────────────── */
+.captcha-row {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.captcha-row[hidden] {
+  display: none;
+}
+
+/* ── 오류 / 완료 ─────────────────────────────────────── */
+.errors {
+  background: #fff4f4;
+  border: 1px solid #c1272d;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 12px;
+  color: #6d1a1e;
+}
+
+.errors ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+
+.done {
+  text-align: center;
+  padding: 26px 10px 10px;
+}
+
+.done-icon {
+  font-size: 40px;
+}
+
+.done h2 {
+  margin: 10px 0 8px;
+  font-size: 16px;
+}
+
+.done p {
+  margin: 4px 0;
+  font-size: 12.5px;
+}
+
+.done .actions {
+  margin-top: 20px;
+}
+
+@media (max-width: 560px) {
+  .time-row {
+    flex-wrap: wrap;
+  }
+  .xp-input.time {
+    width: 64px;
+  }
+}

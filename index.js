@@ -1,3 +1,295 @@
+/* =========================================================
+   UI 버전 전환 (구버전 / 신버전 XP)
+   - 기본값: 신버전(xp)
+   - 선택은 localStorage에 저장되어 다음 방문에도 유지됩니다.
+   ========================================================= */
+(function initUiVersion() {
+  const STORAGE_KEY = "uiVersion";
+  const body = document.body;
+  const toggleBtn = document.getElementById("uiVersionToggle");
+  const label = document.getElementById("uiVersionLabel");
+
+  function readSaved() {
+    try {
+      return localStorage.getItem(STORAGE_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function applyVersion(version) {
+    if (version === "legacy") {
+      body.removeAttribute("data-ui");
+      label.textContent = "🪟 신버전 UI로 보기";
+    } else {
+      body.setAttribute("data-ui", "xp");
+      label.textContent = "🖥️ 구버전 UI로 보기";
+    }
+  }
+
+  // 저장된 값이 없으면 신버전(xp)이 기본
+  let current = readSaved() === "legacy" ? "legacy" : "xp";
+  applyVersion(current);
+
+  toggleBtn.addEventListener("click", function () {
+    current = current === "xp" ? "legacy" : "xp";
+    applyVersion(current);
+    try {
+      localStorage.setItem(STORAGE_KEY, current);
+    } catch (e) {
+      /* 저장 불가 환경(사생활 보호 모드 등)에서는 무시 */
+    }
+    // 테마 변경으로 캔버스 크기가 달라질 수 있어 차트를 다시 맞춤
+    if (typeof myChart !== "undefined") {
+      myChart.resize();
+      // 구버전/신버전에 따라 이름표·축 제한·드래그 적용을 다시 반영
+      if (typeof applyXZoom === "function") applyXZoom();
+    }
+    checkScroll();
+    // XP 모드의 활성 창 표시 갱신
+    if (typeof window.updateActiveWindow === "function") {
+      window.updateActiveWindow();
+    }
+  });
+})();
+
+/* =========================================================
+   XP 데스크톱 연출 (신버전 전용)
+   ========================================================= */
+(function initXpChrome() {
+  // 작업 표시줄 시계
+  const clock = document.getElementById("xpClock");
+  function tick() {
+    const now = new Date();
+    let h = now.getHours();
+    const m = String(now.getMinutes()).padStart(2, "0");
+    const meridiem = h < 12 ? "오전" : "오후";
+    h = h % 12 || 12;
+    clock.textContent = `${meridiem} ${h}:${m}`;
+  }
+  tick();
+  setInterval(tick, 10000);
+
+  const container = document.querySelector(".container");
+  const taskBtn = document.getElementById("xpTaskWindow");
+
+  // 최소화 / 작업 표시줄 버튼으로 복원
+  document.getElementById("xpMinimize").addEventListener("click", function () {
+    container.classList.add("minimized");
+    taskBtn.classList.remove("active");
+  });
+
+  // 작업 표시줄의 메인 버튼 : 최소화 상태면 복원, 아니면 맨 위로 이동
+  taskBtn.addEventListener("click", function () {
+    if (container.classList.contains("minimized")) {
+      container.classList.remove("minimized");
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  });
+
+  /* -------------------------------------------------------
+     XP 스타일 알림 대화상자
+     - 브라우저 기본 alert 대신 사용
+     - 확인 / X / Enter / Esc / 바깥 클릭으로 닫힘
+     - 닫은 뒤에는 직전 포커스로 되돌립니다.
+     ------------------------------------------------------- */
+  const modalOverlay = document.getElementById("xpModalOverlay");
+  const modalTitle = document.getElementById("xpModalTitle");
+  const modalMsg = document.getElementById("xpModalMsg");
+  const modalOk = document.getElementById("xpModalOk");
+  const modalX = document.getElementById("xpModalX");
+  let lastFocused = null;
+
+  function closeModal() {
+    modalOverlay.hidden = true;
+    if (lastFocused && typeof lastFocused.focus === "function") {
+      lastFocused.focus();
+    }
+    lastFocused = null;
+  }
+
+  function showModal(message, title) {
+    // 구버전에서는 XP 다이얼로그 스타일이 적용되지 않으므로 기본 alert 사용
+    if (document.body.dataset.ui !== "xp") {
+      alert(message);
+      return;
+    }
+    lastFocused = document.activeElement;
+    modalTitle.textContent = title || "이용약관에 동의하고 싶어";
+    modalMsg.textContent = message;
+    modalOverlay.hidden = false;
+    modalOk.focus();
+  }
+
+  modalOk.addEventListener("click", closeModal);
+  modalX.addEventListener("click", closeModal);
+
+  // 바깥(오버레이) 클릭 시 닫기
+  modalOverlay.addEventListener("mousedown", function (e) {
+    if (e.target === modalOverlay) closeModal();
+  });
+
+  // Esc / Enter 로 닫기
+  document.addEventListener("keydown", function (e) {
+    if (modalOverlay.hidden) return;
+    if (e.key === "Escape" || e.key === "Enter") {
+      e.preventDefault();
+      closeModal();
+    }
+  });
+
+  // 닫기 / 동의하지 않음 : 게임처럼 거부당하는 연출
+  function refuse(message, title) {
+    showModal(message, title);
+  }
+
+  document.getElementById("xpClose").addEventListener("click", function () {
+    refuse(
+      "이용약관에 동의하지 않으면 리더보드를 종료할 수 없습니다.",
+      "리더보드 종료",
+    );
+  });
+
+  document.getElementById("xpDisagree").addEventListener("click", function () {
+    refuse(
+      "동의하지 않으셨습니다.\n하지만 리더보드는 계속됩니다.\n\n(제 3 조에 의거하여 인정협회는 거부를 인정하지 않습니다)",
+      "인정협회",
+    );
+  });
+
+  // 약관 동의 체크 해제 시도 시 되돌림
+  const consent = document.getElementById("xpConsent");
+  consent.addEventListener("change", function () {
+    if (!consent.checked) {
+      refuse("이용약관 동의는 필수 항목입니다.", "이용약관 동의");
+      consent.checked = true;
+    }
+  });
+
+  document.getElementById("xpStart").addEventListener("click", function () {
+    showModal(
+      "시작 메뉴는 이용약관 제 12 조에 동의한 이후에 사용할 수 있습니다.\n\n(아직 제 4 조입니다)",
+      "시작 메뉴",
+    );
+  });
+
+  /* -------------------------------------------------------
+     섹션 = 창 연출
+     - 각 섹션 타이틀바의 _ □ X : 접기 / 최대화 / 닫기
+     - 작업 표시줄 버튼 : 해당 섹션으로 이동 + 닫힌 창 복원
+     - 스크롤 위치에 따라 활성 창(진한 파랑) 표시
+     ------------------------------------------------------- */
+  const sections = [
+    { id: "sectionMain", el: null, task: null },
+    { id: "sectionSpeedrun", el: null, task: null },
+    { id: "sectionShortcut", el: null, task: null },
+    { id: "sectionRetry", el: null, task: null },
+  ];
+
+  const taskButtons = Array.prototype.slice.call(
+    document.querySelectorAll(".xp-task[data-target]"),
+  );
+
+  sections.forEach((s) => {
+    s.el = document.getElementById(s.id);
+    s.task = taskButtons.find((b) => b.dataset.target === s.id) || null;
+  });
+
+  // '창'으로 취급할 섹션들 (메인 차트 영역은 컨테이너 자체가 창이므로 제외)
+  const windowSections = Array.prototype.slice.call(
+    document.querySelectorAll(".bottom-section, .casual-mode"),
+  );
+
+  windowSections.forEach(function (section) {
+    const title = section.querySelector(".section-title");
+    if (!title) return;
+
+    const minBtn = title.querySelector(".sec-min");
+    const maxBtn = title.querySelector(".sec-max");
+    const closeBtn = title.querySelector(".sec-close");
+
+    // 타이틀바(버튼 외 영역) 클릭 시 접기/펼치기
+    title.addEventListener("click", function (e) {
+      if (e.target.closest(".xp-btn")) return;
+      if (e.target.closest("a, button, label, input")) return;
+      section.classList.toggle("collapsed");
+    });
+
+    if (minBtn) {
+      minBtn.addEventListener("click", function () {
+        section.classList.remove("maximized");
+        section.classList.toggle("collapsed");
+      });
+    }
+
+    if (maxBtn) {
+      maxBtn.addEventListener("click", function () {
+        section.classList.remove("collapsed");
+        section.classList.toggle("maximized");
+        // 최대화 시 차트가 있는 경우 크기 재계산
+        if (typeof myChart !== "undefined") myChart.resize();
+      });
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () {
+        section.classList.remove("maximized");
+        section.classList.add("closed");
+        updateTaskbarState();
+      });
+    }
+  });
+
+  // 작업 표시줄 버튼 : 이동 + 닫힌 창 복원
+  taskButtons.forEach(function (btn) {
+    if (btn.id === "xpTaskWindow") return; // 메인 창은 최소화 토글이 이미 걸려 있음
+    btn.addEventListener("click", function () {
+      const target = document.getElementById(btn.dataset.target);
+      if (!target) return;
+      target.classList.remove("closed", "collapsed");
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
+  function updateTaskbarState() {
+    sections.forEach(function (s) {
+      if (!s.task || !s.el) return;
+      // 닫힌 창은 작업 표시줄에서 눌린 상태를 해제
+      if (s.el.classList.contains("closed")) {
+        s.task.classList.remove("active");
+      }
+    });
+  }
+
+  // 스크롤 위치에 따라 활성 창 갱신
+  function updateActiveWindow() {
+    if (document.body.dataset.ui !== "xp") return;
+
+    let activeId = sections[0].id;
+    const probe = window.innerHeight * 0.35;
+
+    sections.forEach(function (s) {
+      if (!s.el || s.el.classList.contains("closed")) return;
+      const rect = s.el.getBoundingClientRect();
+      if (rect.top <= probe) activeId = s.id;
+    });
+
+    sections.forEach(function (s) {
+      if (!s.el) return;
+      const isActive = s.id === activeId && !s.el.classList.contains("closed");
+      // 메인은 .content-wrapper 라 타이틀바가 없으므로 클래스만 관리
+      s.el.classList.toggle("active-window", isActive);
+      if (s.task) s.task.classList.toggle("active", isActive);
+    });
+  }
+
+  window.addEventListener("scroll", updateActiveWindow, { passive: true });
+  updateActiveWindow();
+
+  // 다른 스코프(테마 전환 등)에서도 호출할 수 있도록 노출
+  window.updateActiveWindow = updateActiveWindow;
+})();
+
 // FOUT 문제 해결 : 폰트 로딩 감지 및 화면 표시
 document.fonts.ready.then(function () {
   document.body.classList.add("fonts-loaded");
@@ -167,9 +459,37 @@ const hoverAxisPlugin = {
 
 const ctx = document.getElementById("clearChart").getContext("2d");
 
+/* ---------------------------------------------------------
+   차트 가독성 설정
+   - 이름표는 상위 LABEL_RANK_LIMIT 위까지만 상시 표시
+     (전체 표시 시 113개 이름이 화면을 가득 채움)
+   - X축은 기본적으로 X_ZOOM_LIMIT(분) 이하만 보여줌
+     기록의 절반이 약관 6시간 이내에 몰려 있어,
+     18시간까지 펼치면 대다수가 왼쪽에 짓눌립니다.
+   --------------------------------------------------------- */
+const LABEL_RANK_LIMIT = 15;
+const X_ZOOM_LIMIT = 360; // 6시간
+let isXZoomed = true; // 기본: 확대 보기
+
+// 차트 개선(이름표 축약/확대/드래그)은 신버전(XP)에서만 적용하고,
+// 구버전은 기존 차트 동작을 그대로 유지합니다.
+function isXpUi() {
+  return document.body.dataset.ui === "xp";
+}
+
+// totalMin 오름차순 정렬 순서가 곧 순위이므로 labelRank로 저장
+function assignLabelRank(list) {
+  list.forEach((d, i) => {
+    d.labelRank = i;
+  });
+  return list;
+}
+
 // 차트 초기 데이터에 재도전 데이터 포함 (정렬 포함)
-const initialChartData = [...processedRecordData, ...processedRetryData].sort(
-  (a, b) => a.totalMin - b.totalMin,
+const initialChartData = assignLabelRank(
+  [...processedRecordData, ...processedRetryData].sort(
+    (a, b) => a.totalMin - b.totalMin,
+  ),
 );
 
 const myChart = new Chart(ctx, {
@@ -201,10 +521,12 @@ const myChart = new Chart(ctx, {
     maintainAspectRatio: false,
     layout: { padding: 3 },
     onHover: (event, elements) => {
-      // 마우스가 점 위에 있을 때 커서를 pointer로, 아니면 default로 변경
+      // 점 위: pointer / 드래그 가능한 확대 보기: grab / 그 외: default
       event.native.target.style.cursor = elements.length
         ? "pointer"
-        : "default";
+        : isXpUi() && isXZoomed
+          ? "grab"
+          : "default";
 
       if (elements && elements.length > 0) {
         const newIndex = elements[0].index;
@@ -221,6 +543,8 @@ const myChart = new Chart(ctx, {
     },
     // 차트 점 클릭 시 리스트로 이동
     onClick: (e, elements) => {
+      // 드래그로 화면을 옮긴 직후의 클릭은 무시
+      if (window.chartJustPanned) return;
       if (elements.length > 0) {
         const index = elements[0].index;
         const listContainer = document.getElementById("rankList");
@@ -255,6 +579,9 @@ const myChart = new Chart(ctx, {
       x: {
         type: "linear",
         position: "bottom",
+        // 확대 보기에서는 6시간까지만. 그 밖의 기록은 '전체 보기'로 확인
+        // (값은 applyXZoom() 에서 갱신합니다)
+        max: X_ZOOM_LIMIT,
         title: {
           display: true,
           text: "이용약관과 마주한 시간",
@@ -433,6 +760,15 @@ const myChart = new Chart(ctx, {
         anchor: "center",
         offset: 4,
         padding: { left: 4, right: 4 },
+        // 113개 이름을 항상 띄우면 화면이 글자로 가득 차므로
+        // 상위권 + 호버/검색 대상만 표시합니다. (LABEL_RANK_LIMIT)
+        display: function (context) {
+          // 구버전은 기존처럼 모든 이름표를 표시
+          if (!isXpUi()) return true;
+          if (context.dataIndex === activePoint) return true;
+          const d = context.dataset.data[context.dataIndex];
+          return d && d.labelRank !== undefined && d.labelRank < LABEL_RANK_LIMIT;
+        },
         color: (context) => {
           if (activePoint !== null && context.dataIndex !== activePoint)
             return "rgba(0,0,0,0.1)";
@@ -451,6 +787,269 @@ const myChart = new Chart(ctx, {
   },
 });
 
+/* ---------------------------------------------------------
+   X축 확대/전체 보기 전환
+   --------------------------------------------------------- */
+// 확대 보기에서 드래그로 이동한 현재 뷰포트 (null이면 기본 위치)
+let panView = null;
+
+// 데이터 전체 범위 (드래그 한계 계산용)
+function getDataBounds() {
+  const data = myChart.data.datasets[0].data;
+  if (!data.length) return { xMin: 0, xMax: 60, yMin: 0, yMax: 30 };
+  const xs = data.map((d) => d.x);
+  const ys = data.map((d) => d.y);
+  return {
+    xMin: Math.min(...xs),
+    xMax: Math.max(...xs),
+    yMin: Math.min(...ys),
+    yMax: Math.max(...ys),
+  };
+}
+
+// 현재 보이는 영역 밖의 기록 수를 안내 문구로 갱신
+function updateZoomHint() {
+  const hint = document.getElementById("xZoomHint");
+  if (!isXpUi() || !isXZoomed) {
+    hint.textContent = "";
+    return;
+  }
+  const xa = myChart.scales.x;
+  const ya = myChart.scales.y;
+  const hidden = myChart.data.datasets[0].data.filter(
+    (d) => d.x < xa.min || d.x > xa.max || d.y < ya.min || d.y > ya.max,
+  ).length;
+  hint.textContent =
+    hidden > 0 ? `화면 밖 ${hidden}명 · 드래그로 이동` : "드래그로 이동";
+}
+
+function applyXZoom() {
+  const btn = document.getElementById("xZoomBtn");
+  const hint = document.getElementById("xZoomHint");
+  const controls = document.querySelector(".chart-controls");
+  const scales = myChart.options.scales;
+
+  // 구버전: 기존 차트 그대로 (축 제한/드래그 없음)
+  if (!isXpUi()) {
+    controls.style.display = "none";
+    scales.x.min = undefined;
+    scales.x.max = undefined;
+    scales.y.min = undefined;
+    scales.y.max = undefined;
+    myChart.update();
+    return;
+  }
+
+  controls.style.display = "";
+
+  if (isXZoomed) {
+    if (panView) {
+      // 드래그로 이동한 위치 유지
+      scales.x.min = panView.xMin;
+      scales.x.max = panView.xMax;
+      scales.y.min = panView.yMin;
+      scales.y.max = panView.yMax;
+    } else {
+      scales.x.min = 0;
+      scales.x.max = X_ZOOM_LIMIT;
+      scales.y.min = undefined;
+      scales.y.max = undefined;
+    }
+    myChart.update();
+
+    btn.textContent = "🔍 전체 보기 (18시간까지)";
+    updateZoomHint();
+  } else {
+    panView = null;
+    scales.x.min = undefined;
+    scales.x.max = undefined;
+    scales.y.min = undefined;
+    scales.y.max = undefined;
+    myChart.update();
+    btn.textContent = "🔍 확대 보기 (6시간까지)";
+    hint.textContent = "";
+  }
+}
+
+/* ---------------------------------------------------------
+   확대 보기에서 차트 드래그(패닝)
+   - 신버전 + 확대 보기일 때만 동작
+   - 데이터 범위 밖으로 너무 벗어나지 않도록 여유분만 허용
+   --------------------------------------------------------- */
+(function initChartPan() {
+  const canvas = document.getElementById("clearChart");
+  let dragging = false;
+  let moved = false;
+  let startX = 0;
+  let startY = 0;
+  let startView = null;
+  // 더블클릭 초기화 직후의 잔여 mousedown/up 을 무시하기 위한 플래그
+  let justReset = false;
+
+  function canPan() {
+    return isXpUi() && isXZoomed;
+  }
+
+  function currentView() {
+    return {
+      xMin: myChart.scales.x.min,
+      xMax: myChart.scales.x.max,
+      yMin: myChart.scales.y.min,
+      yMax: myChart.scales.y.max,
+    };
+  }
+
+  canvas.addEventListener("mousedown", function (e) {
+    if (!canPan()) return;
+    if (justReset) {
+      justReset = false;
+      return;
+    }
+    dragging = true;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    startView = currentView();
+  });
+
+  window.addEventListener("mousemove", function (e) {
+    if (!dragging || !startView) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const dxPx = e.clientX - startX;
+    const dyPx = e.clientY - startY;
+
+    if (!moved && Math.abs(dxPx) + Math.abs(dyPx) < 3) return;
+    moved = true;
+    canvas.style.cursor = "grabbing";
+
+    // 픽셀 이동량을 데이터 단위로 환산
+    const xSpan = startView.xMax - startView.xMin;
+    const ySpan = startView.yMax - startView.yMin;
+    const xPerPx = xSpan / (myChart.chartArea.right - myChart.chartArea.left);
+    const yPerPx = ySpan / (myChart.chartArea.bottom - myChart.chartArea.top);
+
+    let nxMin = startView.xMin - dxPx * xPerPx;
+    let nxMax = startView.xMax - dxPx * xPerPx;
+    // Y축은 위로 갈수록 값이 커지므로 부호가 반대
+    let nyMin = startView.yMin + dyPx * yPerPx;
+    let nyMax = startView.yMax + dyPx * yPerPx;
+
+    // 데이터 범위에서 한 화면 이상 벗어나지 않도록 제한
+    const b = getDataBounds();
+    const xPad = xSpan * 0.5;
+    const yPad = ySpan * 0.5;
+
+    if (nxMin < b.xMin - xPad) {
+      nxMax += b.xMin - xPad - nxMin;
+      nxMin = b.xMin - xPad;
+    }
+    if (nxMax > b.xMax + xPad) {
+      nxMin -= nxMax - (b.xMax + xPad);
+      nxMax = b.xMax + xPad;
+    }
+    if (nyMin < b.yMin - yPad) {
+      nyMax += b.yMin - yPad - nyMin;
+      nyMin = b.yMin - yPad;
+    }
+    if (nyMax > b.yMax + yPad) {
+      nyMin -= nyMax - (b.yMax + yPad);
+      nyMax = b.yMax + yPad;
+    }
+
+    panView = { xMin: nxMin, xMax: nxMax, yMin: nyMin, yMax: nyMax };
+
+    const scales = myChart.options.scales;
+    scales.x.min = nxMin;
+    scales.x.max = nxMax;
+    scales.y.min = nyMin;
+    scales.y.max = nyMax;
+    myChart.update("none");
+
+    e.preventDefault();
+  });
+
+  window.addEventListener("mouseup", function () {
+    if (!dragging) return;
+    dragging = false;
+    startView = null;
+    canvas.style.cursor = "";
+    if (moved) {
+      // 드래그 직후 발생하는 click 이 점 선택으로 이어지지 않도록 차단
+      window.chartJustPanned = true;
+      setTimeout(() => {
+        window.chartJustPanned = false;
+      }, 0);
+      // 드래그로 화면이 바뀌었으면 안내 문구만 갱신
+      updateZoomHint();
+    }
+  });
+
+  // (커서 모양은 차트의 onHover 에서 함께 관리합니다)
+
+  // 확대 보기 기본 위치로 되돌리기 (더블클릭)
+  // Chart.js 가 캔버스 이벤트를 가로채므로 래퍼에서 캡처 단계로 받습니다.
+  const canvasWrap = canvas.closest(".chart-canvas-wrap") || canvas;
+  canvasWrap.addEventListener("dblclick", function () {
+    if (!canPan()) return;
+    // 더블클릭 중 발생한 mousedown/up 이 방금 되돌린 위치를
+    // 다시 덮어쓰지 않도록 드래그 상태를 완전히 정리합니다.
+    dragging = false;
+    moved = false;
+    startView = null;
+    justReset = true;
+    panView = null;
+    applyXZoom();
+  });
+})();
+
+/* ---------------------------------------------------------
+   특정 기록이 확대 화면 밖에 있으면 그 위치로 뷰를 옮깁니다.
+   (명예의 전당 목록 클릭 / 스트리머 검색에서 호출)
+   --------------------------------------------------------- */
+function focusChartOn(dataItem) {
+  // 구버전이거나 전체 보기면 이미 다 보이므로 이동 불필요
+  if (!isXpUi() || !isXZoomed || !dataItem) return;
+
+  const xa = myChart.scales.x;
+  const ya = myChart.scales.y;
+
+  // 가장자리에 딱 붙지 않도록 약간의 여유를 둡니다
+  const xMargin = (xa.max - xa.min) * 0.08;
+  const yMargin = (ya.max - ya.min) * 0.08;
+
+  const inView =
+    dataItem.x >= xa.min + xMargin &&
+    dataItem.x <= xa.max - xMargin &&
+    dataItem.y >= ya.min + yMargin &&
+    dataItem.y <= ya.max - yMargin;
+
+  if (inView) return;
+
+  // 현재 확대 배율을 유지한 채 해당 점을 중앙으로
+  const xSpan = xa.max - xa.min;
+  const ySpan = ya.max - ya.min;
+
+  panView = {
+    xMin: dataItem.x - xSpan / 2,
+    xMax: dataItem.x + xSpan / 2,
+    yMin: dataItem.y - ySpan / 2,
+    yMax: dataItem.y + ySpan / 2,
+  };
+
+  const scales = myChart.options.scales;
+  scales.x.min = panView.xMin;
+  scales.x.max = panView.xMax;
+  scales.y.min = panView.yMin;
+  scales.y.max = panView.yMax;
+}
+
+document.getElementById("xZoomBtn").addEventListener("click", function () {
+  isXZoomed = !isXZoomed;
+  panView = null;
+  applyXZoom();
+});
+
 function getDisplayData() {
   const isShortcutChecked = document.getElementById("toggleShortcut").checked;
 
@@ -460,7 +1059,8 @@ function getDisplayData() {
     finalData = [...finalData, ...processedShortcutData]; // 숏컷 데이터
   }
 
-  return finalData.sort((a, b) => a.totalMin - b.totalMin);
+  // 정렬 후 순위를 다시 매겨 이름표 표시 기준(labelRank)을 갱신
+  return assignLabelRank(finalData.sort((a, b) => a.totalMin - b.totalMin));
 }
 
 function renderRanking() {
@@ -509,18 +1109,23 @@ function renderRanking() {
         clearTimeout(chartFocusTimeout);
       }
 
-      // 2. 차트 하이라이트 & 툴팁 활성화
+      // 2. 확대 상태에서 화면 밖이면 해당 위치로 차트를 이동
+      focusChartOn(data);
+
+      // 3. 차트 하이라이트 & 툴팁 활성화
       activePoint = index;
       myChart.tooltip.setActiveElements([{ datasetIndex: 0, index: index }]);
       myChart.setActiveElements([{ datasetIndex: 0, index: index }]);
       myChart.update();
 
-      // 3. 3초 뒤에 포커스 해제 예약
+      // 4. 3초 뒤에 포커스 해제 예약
       chartFocusTimeout = setTimeout(() => {
         activePoint = null; // 점선(Crosshair) 제거
         myChart.tooltip.setActiveElements([]); // 툴팁 숨기기
         myChart.setActiveElements([]); // 점 활성화 해제
         myChart.update();
+        // 이동했다면 '화면 밖 N명' 안내를 갱신
+        updateZoomHint();
       }, 1500);
     };
 
@@ -623,7 +1228,8 @@ searchInput.addEventListener("keyup", function (e) {
 function updateChart() {
   const displayData = getDisplayData();
   myChart.data.datasets[0].data = displayData;
-  myChart.update();
+  // 데이터가 바뀌면 숨김 인원 수도 달라지므로 함께 갱신
+  applyXZoom();
 }
 
 function renderRetries() {
@@ -893,6 +1499,7 @@ renderRanking();
 renderSpeedrun();
 renderShortcuts();
 renderRetries();
+applyXZoom(); // X축 확대 상태 및 안내 문구 초기화
 
 // 리스트 생성 후 스크롤 상태 재확인 (DOM 높이 변경 반영)
 setTimeout(checkScroll, 100);

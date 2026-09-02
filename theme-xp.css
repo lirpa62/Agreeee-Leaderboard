@@ -1,0 +1,1091 @@
+/* =========================================================
+   theme-xp.css
+   '이용약관에 동의하고 싶어' 게임 UI (Windows XP Luna) 테마
+   ---------------------------------------------------------
+   body[data-ui="xp"] 일 때만 적용됩니다.
+   구버전(index.css)과 동일한 마크업을 공유하며, 스킨만 교체합니다.
+   ========================================================= */
+
+body[data-ui="xp"] {
+  /* --- Luna 팔레트 --- */
+  --xp-face: #ece9d8; /* 다이얼로그 본체 (Luna Beige) */
+  --xp-face-alt: #f5f4ea;
+  --xp-white: #ffffff;
+  --xp-shadow: #aca899; /* 베벨 그림자 */
+  --xp-dark: #716f64; /* 베벨 진한 그림자 */
+  --xp-text: #000000;
+  --xp-text-dim: #4d4d4d;
+
+  --xp-title-1: #0058ee; /* 타이틀바 그라데이션 */
+  --xp-title-2: #3a93ff;
+  --xp-title-3: #0855dd;
+  --xp-title-inactive-1: #7697e7;
+  --xp-title-inactive-2: #9db4ee;
+
+  --xp-blue-border: #0054e3; /* 창 테두리 */
+  --xp-highlight: #316ac5; /* 선택 항목 */
+  --xp-desktop: #3a6ea5;
+
+  --xp-green: #3d8b37; /* 동의함 */
+  --xp-red: #c1272d; /* 동의하지 않음 */
+
+  --xp-taskbar-1: #245edb;
+  --xp-taskbar-2: #3f8cf3;
+  --xp-start-1: #3c993c;
+  --xp-start-2: #2e8b30;
+
+  --xp-font: "Tahoma", "Pretendard Variable", "Pretendard",
+    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+  font-family: var(--xp-font);
+  /* Luna 기본 바탕화면 (Bliss 느낌의 하늘/언덕 그라데이션) */
+  background: linear-gradient(
+      180deg,
+      #4b8bd4 0%,
+      #6ba7e4 30%,
+      #9ccbf0 46%,
+      #7fb04a 52%,
+      #558b2f 72%,
+      #3f6f22 100%
+    )
+    fixed;
+  background-color: var(--xp-desktop);
+  min-width: 1440px;
+  padding: 0;
+  /* 작업 표시줄이 하단을 가리지 않도록 여백 확보 */
+  padding-bottom: 54px;
+}
+
+body[data-ui="xp"] * {
+  font-family: var(--xp-font);
+}
+
+/* 구버전 전용 요소는 XP 모드에서 숨김 */
+body[data-ui="xp"] .legacy-only {
+  display: none !important;
+}
+
+/* ---------------------------------------------------------
+   XP 창(Window) 공통 — .container 를 하나의 큰 창으로
+   --------------------------------------------------------- */
+body[data-ui="xp"] .container {
+  width: 1440px;
+  margin: 24px auto;
+  padding: 0;
+  background: var(--xp-face);
+  border: 1px solid var(--xp-blue-border);
+  border-radius: 8px 8px 0 0;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 10px 30px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+/* 창 타이틀바 */
+body[data-ui="xp"] .xp-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 4px 0 6px;
+  background: linear-gradient(
+    180deg,
+    var(--xp-title-2) 0%,
+    var(--xp-title-1) 8%,
+    var(--xp-title-1) 42%,
+    var(--xp-title-3) 88%,
+    #26a0ff 100%
+  );
+  border-bottom: 1px solid #003fc4;
+  border-radius: 7px 7px 0 0;
+  user-select: none;
+}
+
+body[data-ui="xp"] .xp-titlebar-icon {
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  line-height: 1;
+}
+
+body[data-ui="xp"] .xp-titlebar-text {
+  flex: 1;
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: bold;
+  letter-spacing: -0.2px;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.55);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 타이틀바 버튼 (_ □ X) */
+body[data-ui="xp"] .xp-btns {
+  display: flex;
+  gap: 2px;
+}
+
+body[data-ui="xp"] .xp-btn {
+  width: 21px;
+  height: 21px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: linear-gradient(180deg, #5babff 0%, #1c65d8 55%, #0d4fbd 100%);
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5);
+}
+
+body[data-ui="xp"] .xp-btn:hover {
+  filter: brightness(1.18);
+}
+
+body[data-ui="xp"] .xp-btn.close {
+  background: linear-gradient(180deg, #f7a08a 0%, #d5442a 45%, #a92d17 100%);
+}
+
+/* 창 내부 여백 */
+body[data-ui="xp"] .xp-window-body {
+  padding: 14px 16px 18px;
+}
+
+/* ---------------------------------------------------------
+   헤더 / 약관 연출
+   --------------------------------------------------------- */
+body[data-ui="xp"] h2 {
+  font-size: 1.05rem;
+  color: var(--xp-text);
+  margin: 0 0 10px;
+  text-align: center;
+  font-weight: bold;
+}
+
+body[data-ui="xp"] .notice {
+  font-size: 0.75rem;
+  color: var(--xp-text-dim);
+  line-height: 1.55;
+}
+
+/* 안내문을 XP 정보 상자처럼 */
+body[data-ui="xp"] .xp-infobox {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--xp-white);
+  border: 1px solid var(--xp-shadow);
+  padding: 10px 12px;
+  margin-bottom: 14px;
+}
+
+body[data-ui="xp"] .xp-infobox .xp-info-icon {
+  flex: 0 0 auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #5babff, #0d4fbd);
+  color: #fff;
+  font-weight: bold;
+  font-size: 15px;
+  display: grid;
+  place-items: center;
+  font-style: italic;
+}
+
+/* 그룹 박스 (XP fieldset) */
+body[data-ui="xp"] .xp-group {
+  border: 1px solid var(--xp-shadow);
+  background: var(--xp-face-alt);
+  padding: 12px;
+  margin-bottom: 14px;
+  position: relative;
+}
+
+body[data-ui="xp"] .xp-group > .xp-group-title {
+  position: absolute;
+  top: -9px;
+  left: 10px;
+  background: var(--xp-face);
+  padding: 0 6px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #003399;
+}
+
+/* ---------------------------------------------------------
+   버튼 (XP 표준 / 동의함 / 동의하지 않음)
+   --------------------------------------------------------- */
+body[data-ui="xp"] .request-btn,
+body[data-ui="xp"] .expand-btn,
+body[data-ui="xp"] .xp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 92px;
+  padding: 5px 16px;
+  font-size: 0.78rem;
+  font-weight: normal;
+  color: var(--xp-text);
+  text-decoration: none;
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #f2f1e8 45%,
+    #e3e0d0 55%,
+    #d6d2c2 100%
+  );
+  border: 1px solid #8e8d78;
+  border-radius: 3px;
+  box-shadow:
+    inset 0 0 0 1px #fff,
+    0 1px 1px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  transition: none;
+  margin-bottom: 0;
+}
+
+body[data-ui="xp"] .request-btn:hover,
+body[data-ui="xp"] .expand-btn:hover,
+body[data-ui="xp"] .xp-button:hover {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #fdf6d8 45%,
+    #f7e9a8 55%,
+    #f0dd8c 100%
+  );
+  border-color: #e0a900;
+  transform: none;
+  box-shadow:
+    inset 0 0 0 1px #fff,
+    0 1px 1px rgba(0, 0, 0, 0.12);
+}
+
+body[data-ui="xp"] .request-btn:active,
+body[data-ui="xp"] .expand-btn:active,
+body[data-ui="xp"] .xp-button:active {
+  background: linear-gradient(180deg, #d6d2c2 0%, #e8e5d8 100%);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.25);
+  padding: 6px 15px 4px 17px;
+}
+
+/* 게임의 동의함 / 동의하지 않음 버튼쌍 */
+body[data-ui="xp"] .xp-agree-row {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 16px 0 4px;
+}
+
+body[data-ui="xp"] .xp-button.agree {
+  color: #12420f;
+  border-color: #4b7d45;
+  background: linear-gradient(
+    180deg,
+    #fbfff9 0%,
+    #ddf0d5 45%,
+    #bfe3b2 55%,
+    #a5d495 100%
+  );
+  font-weight: bold;
+}
+
+body[data-ui="xp"] .xp-button.agree:hover {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #e6f8de 45%,
+    #c9edbb 55%,
+    #aede9c 100%
+  );
+  border-color: #2f6b2a;
+}
+
+body[data-ui="xp"] .xp-button.disagree {
+  color: #5a1113;
+  border-color: #a4565a;
+  background: linear-gradient(
+    180deg,
+    #fffafa 0%,
+    #f6d9d9 45%,
+    #eebfbf 55%,
+    #e0a5a5 100%
+  );
+}
+
+body[data-ui="xp"] .xp-button.disagree:hover {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #fbe2e2 45%,
+    #f3c6c6 55%,
+    #e9a9a9 100%
+  );
+  border-color: #8e2f33;
+}
+
+/* ---------------------------------------------------------
+   레이아웃 : 차트 + 명예의 전당
+   --------------------------------------------------------- */
+body[data-ui="xp"] .content-wrapper {
+  gap: 12px;
+  height: 790px;
+}
+
+body[data-ui="xp"] .chart-section,
+body[data-ui="xp"] .rank-section {
+  background: var(--xp-white);
+  border: 1px solid var(--xp-shadow);
+  border-radius: 0;
+  /* XP 오목한(sunken) 입력영역 느낌 */
+  box-shadow: inset 1px 1px 0 rgba(0, 0, 0, 0.18);
+  padding: 10px;
+}
+
+body[data-ui="xp"] .rank-section {
+  background: var(--xp-face-alt);
+}
+
+/* 차트 컨트롤 : XP 버튼 스킨 */
+body[data-ui="xp"] .chart-ctrl-btn {
+  border-radius: 3px;
+  border: 1px solid #8e8d78;
+  color: var(--xp-text);
+  font-weight: normal;
+  font-size: 0.74rem;
+  padding: 3px 12px;
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #f2f1e8 45%,
+    #e3e0d0 55%,
+    #d6d2c2 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px #fff,
+    0 1px 1px rgba(0, 0, 0, 0.12);
+  transition: none;
+}
+
+body[data-ui="xp"] .chart-ctrl-btn:hover {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #fdf6d8 45%,
+    #f7e9a8 55%,
+    #f0dd8c 100%
+  );
+  border-color: #e0a900;
+}
+
+body[data-ui="xp"] .chart-hint {
+  color: #6b6b6b;
+}
+
+body[data-ui="xp"] .rank-title-wrapper {
+  border-bottom: 1px solid var(--xp-shadow);
+  padding-bottom: 8px;
+  margin-bottom: 10px;
+}
+
+body[data-ui="xp"] .rank-title {
+  font-size: 0.95rem;
+  color: #003399;
+}
+
+body[data-ui="xp"] .rank-subtitle {
+  font-size: 0.68rem;
+  color: var(--xp-text-dim);
+}
+
+/* 검색창 : XP 오목한 입력 필드 */
+body[data-ui="xp"] .search-input-container {
+  border: 1px solid var(--xp-dark);
+  border-radius: 0;
+  background: var(--xp-white);
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.22);
+  height: 22px;
+}
+
+body[data-ui="xp"] .search-input-container:focus-within {
+  border-color: var(--xp-blue-border);
+  box-shadow:
+    inset 1px 1px 1px rgba(0, 0, 0, 0.22),
+    0 0 3px rgba(0, 84, 227, 0.6);
+}
+
+body[data-ui="xp"] .search-input {
+  font-size: 0.78rem;
+}
+
+body[data-ui="xp"] .search-btn:hover {
+  color: var(--xp-blue-border);
+}
+
+/* 순위 리스트 항목 */
+body[data-ui="xp"] .rank-item {
+  background: var(--xp-white);
+  border: 1px solid #d8d4c4;
+  border-radius: 0;
+  margin-bottom: 4px;
+  padding: 7px 9px;
+  font-size: 0.82rem;
+  transition: none;
+}
+
+body[data-ui="xp"] .rank-item:hover {
+  transform: none;
+  background: #eaf1fc;
+  border-color: var(--xp-highlight);
+  box-shadow: none;
+}
+
+/* 선택/검색 하이라이트 : XP 선택색(파랑) */
+body[data-ui="xp"] .highlight-rank {
+  background: var(--xp-highlight) !important;
+  border-color: #1b4d9e !important;
+  transform: none;
+  box-shadow: none;
+}
+
+body[data-ui="xp"] .highlight-rank .rank-name,
+body[data-ui="xp"] .highlight-rank .rank-detail,
+body[data-ui="xp"] .highlight-rank .rank-time {
+  color: #fff !important;
+}
+
+body[data-ui="xp"] .rank-time {
+  color: #0a246a;
+}
+
+body[data-ui="xp"] .rank-detail {
+  color: #6b6b6b;
+}
+
+/* 순위 뱃지 : XP 스타일 정사각 + 살짝 둥근 */
+body[data-ui="xp"] .rank-badge {
+  border-radius: 2px;
+  border: 1px solid rgba(0, 0, 0, 0.28);
+  background: linear-gradient(180deg, #f6f5ee 0%, #cfcbba 100%);
+  color: #333;
+  box-shadow: inset 0 1px 0 #fff;
+}
+
+body[data-ui="xp"] .rank-badge.gold {
+  background: linear-gradient(180deg, #ffe680 0%, #e6b800 100%);
+  color: #4a3b00;
+}
+
+body[data-ui="xp"] .rank-badge.silver {
+  background: linear-gradient(180deg, #f2f2f2 0%, #b0b0b0 100%);
+  color: #333;
+}
+
+body[data-ui="xp"] .rank-badge.bronze {
+  background: linear-gradient(180deg, #e8b183 0%, #b96f28 100%);
+  color: #3d2208;
+}
+
+body[data-ui="xp"] .shortcut-item:nth-child(1) .rank-badge,
+body[data-ui="xp"] .retry-item:nth-child(1) .rank-badge,
+body[data-ui="xp"] .speedrun-item:nth-child(1) .rank-badge {
+  background: linear-gradient(180deg, #ffe680 0%, #e6b800 100%);
+}
+
+body[data-ui="xp"] .shortcut-item:nth-child(2) .rank-badge,
+body[data-ui="xp"] .retry-item:nth-child(2) .rank-badge,
+body[data-ui="xp"] .speedrun-item:nth-child(2) .rank-badge {
+  background: linear-gradient(180deg, #f2f2f2 0%, #b0b0b0 100%);
+}
+
+body[data-ui="xp"] .shortcut-item:nth-child(3) .rank-badge,
+body[data-ui="xp"] .retry-item:nth-child(3) .rank-badge,
+body[data-ui="xp"] .speedrun-item:nth-child(3) .rank-badge {
+  background: linear-gradient(180deg, #e8b183 0%, #b96f28 100%);
+}
+
+/* ---------------------------------------------------------
+   XP 스크롤바 (페이지 전체 + 내부 스크롤 영역 공통)
+   --------------------------------------------------------- */
+body[data-ui="xp"]::-webkit-scrollbar,
+body[data-ui="xp"] .rank-list::-webkit-scrollbar,
+body[data-ui="xp"] .xp-eula::-webkit-scrollbar,
+body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar,
+body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar {
+  width: 16px;
+}
+
+body[data-ui="xp"]::-webkit-scrollbar-track,
+body[data-ui="xp"] .rank-list::-webkit-scrollbar-track,
+body[data-ui="xp"] .xp-eula::-webkit-scrollbar-track,
+body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar-track,
+body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar-track {
+  background: #f1efe2;
+  border-left: 1px solid var(--xp-shadow);
+}
+
+body[data-ui="xp"]::-webkit-scrollbar-thumb,
+body[data-ui="xp"] .rank-list::-webkit-scrollbar-thumb,
+body[data-ui="xp"] .xp-eula::-webkit-scrollbar-thumb,
+body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar-thumb,
+body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar-thumb {
+  background: linear-gradient(90deg, #fff 0%, #d7d3c3 40%, #b8b3a1 100%);
+  border: 1px solid #8e8d78;
+  border-radius: 2px;
+}
+
+body[data-ui="xp"]::-webkit-scrollbar-thumb:hover,
+body[data-ui="xp"] .rank-list::-webkit-scrollbar-thumb:hover,
+body[data-ui="xp"] .xp-eula::-webkit-scrollbar-thumb:hover,
+body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar-thumb:hover,
+body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(90deg, #fff 0%, #e3ecfa 40%, #a9c4ec 100%);
+}
+
+/* ---------------------------------------------------------
+   하위 섹션 (스피드런 / 숏컷 / 재도전)
+   --------------------------------------------------------- */
+body[data-ui="xp"] .bottom-section,
+body[data-ui="xp"] .bottom-section:has(.retry-list) {
+  border: 1px solid var(--xp-shadow);
+  background: var(--xp-face-alt);
+  border-top: 1px solid var(--xp-shadow);
+  border-bottom: 1px solid var(--xp-shadow);
+  padding: 0;
+  margin-bottom: 16px;
+}
+
+/* 섹션 헤더를 작은 타이틀바처럼.
+   기본은 '비활성 창'(회색빛 파랑)이고, 화면에 보이는 섹션만
+   활성 창(진한 파랑)이 됩니다. — XP의 실제 동작을 따름 */
+body[data-ui="xp"] .section-title {
+  font-size: 0.85rem;
+  color: #fff;
+  background: linear-gradient(
+    180deg,
+    var(--xp-title-inactive-2) 0%,
+    var(--xp-title-inactive-1) 45%,
+    #6d8fe0 100%
+  );
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.35);
+  margin: 0 0 12px;
+  padding: 6px 6px 6px 10px;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+body[data-ui="xp"] .bottom-section.active-window > .section-title,
+body[data-ui="xp"] .casual-mode.active-window > .section-title {
+  background: linear-gradient(
+    180deg,
+    var(--xp-title-2) 0%,
+    var(--xp-title-1) 40%,
+    var(--xp-title-3) 100%
+  );
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
+}
+
+/* 섹션 타이틀바의 창 버튼은 우측 끝에 가로로 */
+body[data-ui="xp"] .section-title .xp-btns {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+body[data-ui="xp"] .section-title .xp-btn {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+/* 접기(최소화) : 타이틀바만 남기고 본문 숨김 */
+body[data-ui="xp"] .bottom-section.collapsed > *:not(.section-title),
+body[data-ui="xp"] .casual-mode.collapsed > *:not(.section-title) {
+  display: none;
+}
+
+body[data-ui="xp"] .bottom-section.collapsed > .section-title,
+body[data-ui="xp"] .casual-mode.collapsed > .section-title {
+  margin-bottom: 0;
+}
+
+/* 최대화 : 해당 섹션만 화면 가득 */
+body[data-ui="xp"] .bottom-section.maximized,
+body[data-ui="xp"] .casual-mode.maximized {
+  position: fixed;
+  inset: 0 0 32px 0;
+  z-index: 9998;
+  margin: 0;
+  overflow-y: auto;
+  background: var(--xp-face);
+}
+
+/* 닫기 : 작업 표시줄에서 다시 열 수 있음 */
+body[data-ui="xp"] .bottom-section.closed,
+body[data-ui="xp"] .casual-mode.closed {
+  display: none;
+}
+
+/* XP 모드에서는 작업 표시줄이 네비게이션을 대신하므로
+   기존 스크롤 유도 화살표를 숨깁니다. */
+body[data-ui="xp"] .scroll-indicator {
+  display: none;
+}
+
+body[data-ui="xp"] .section-title .request-btn {
+  color: var(--xp-text);
+  text-shadow: none;
+  font-size: 0.72rem;
+  min-width: 0;
+  padding: 3px 10px;
+}
+
+body[data-ui="xp"] .bottom-section > *:not(.section-title) {
+  margin-left: 14px;
+  margin-right: 14px;
+}
+
+body[data-ui="xp"] .bottom-section > ul {
+  margin-left: 0;
+  margin-right: 0;
+  padding: 0 14px;
+}
+
+/* 토글 (풍선을 안 썼더라면?) : XP 체크박스 */
+body[data-ui="xp"] .toggle-label {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--xp-text);
+  text-shadow: none;
+  border: 1px solid var(--xp-shadow);
+  border-radius: 2px;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+}
+
+body[data-ui="xp"] .toggle-label:hover {
+  background: #fdf6d8;
+  border-color: #e0a900;
+}
+
+body[data-ui="xp"] #shortcutWarning {
+  color: #ffe680;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.6);
+  font-size: 0.78rem;
+}
+
+/* 리스트 아이템 (스피드런/숏컷/재도전) */
+body[data-ui="xp"] .retry-item,
+body[data-ui="xp"] .shortcut-item,
+body[data-ui="xp"] .speedrun-item {
+  background: var(--xp-white);
+  border: 1px solid var(--xp-shadow);
+  border-radius: 0;
+  box-shadow: inset 0 0 0 1px #fff;
+  font-size: 0.8rem;
+  transition: none;
+}
+
+body[data-ui="xp"] .shortcut-item:hover,
+body[data-ui="xp"] .speedrun-item:hover {
+  transform: none;
+  background: #eaf1fc;
+  box-shadow: inset 0 0 0 1px #fff;
+}
+
+body[data-ui="xp"] .bottom-section img {
+  border-radius: 0;
+  border: 1px solid var(--xp-shadow);
+  padding: 3px;
+  background: #fff;
+}
+
+body[data-ui="xp"] .casual-mode {
+  font-style: normal;
+  font-size: 0.78rem;
+  border: 1px solid var(--xp-shadow);
+  background: var(--xp-face-alt);
+  padding: 0 0 12px;
+  margin-bottom: 8px;
+}
+
+body[data-ui="xp"] .casual-mode .section-title {
+  margin-bottom: 10px;
+}
+
+/* 스크롤 유도 화살표 */
+body[data-ui="xp"] .scroll-arrow {
+  border-bottom-color: #003399;
+  border-right-color: #003399;
+}
+
+body[data-ui="xp"] .scroll-text {
+  color: #003399;
+}
+
+/* ---------------------------------------------------------
+   약관 스크롤 박스 (게임 연출)
+   --------------------------------------------------------- */
+body[data-ui="xp"] .xp-eula {
+  height: 92px;
+  overflow-y: auto;
+  background: var(--xp-white);
+  border: 1px solid var(--xp-dark);
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.2);
+  padding: 8px 10px;
+  font-size: 0.72rem;
+  line-height: 1.7;
+  color: #222;
+}
+
+/* 스크롤바 스타일은 상단 'XP 스크롤바' 블록에서 일괄 정의합니다. */
+
+body[data-ui="xp"] .xp-eula h4 {
+  margin: 10px 0 2px;
+  font-size: 0.74rem;
+  color: #003399;
+}
+
+body[data-ui="xp"] .xp-eula h4:first-child {
+  margin-top: 0;
+}
+
+/* 약관 동의 체크박스 줄 */
+body[data-ui="xp"] .xp-consent {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 10px;
+  font-size: 0.78rem;
+  font-weight: bold;
+  cursor: pointer;
+  user-select: none;
+}
+
+body[data-ui="xp"] .xp-consent input {
+  width: 13px;
+  height: 13px;
+  cursor: pointer;
+  accent-color: var(--xp-blue-border);
+}
+
+/* ---------------------------------------------------------
+   XP 스타일 알림 대화상자
+   (브라우저 기본 alert 대신 사용 — 신버전 전용)
+   --------------------------------------------------------- */
+.xp-modal-overlay[hidden] {
+  display: none !important;
+}
+
+.xp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* XP 모달의 화면 어둡게 처리 */
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.xp-modal {
+  min-width: 340px;
+  max-width: 460px;
+  background: var(--xp-face, #ece9d8);
+  border: 1px solid var(--xp-blue-border, #0054e3);
+  border-radius: 8px 8px 0 0;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 12px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: xpModalIn 0.12s ease-out;
+}
+
+@keyframes xpModalIn {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.xp-modal .xp-titlebar {
+  cursor: default;
+}
+
+.xp-modal-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 20px 12px;
+}
+
+/* 느낌표 아이콘 (XP 경고 다이얼로그 느낌) */
+.xp-modal-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: bold;
+  font-style: italic;
+  color: #fff;
+  background: linear-gradient(180deg, #ffd34d 0%, #f0a000 55%, #d98600 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.xp-modal-msg {
+  margin: 0;
+  padding-top: 3px;
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: #000;
+  /* 메시지의 줄바꿈(\n)을 그대로 반영 */
+  white-space: pre-line;
+}
+
+.xp-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 20px 18px;
+}
+
+.xp-modal-footer .xp-button {
+  min-width: 84px;
+}
+
+/* 기본 버튼 강조 (XP의 포커스 테두리) */
+.xp-modal-footer .xp-button:focus-visible,
+.xp-modal-footer .xp-button.default {
+  outline: 1px dotted #000;
+  outline-offset: -4px;
+}
+
+/* ---------------------------------------------------------
+   작업 표시줄 (Taskbar) + 시작 버튼
+   --------------------------------------------------------- */
+/* 구버전에서는 작업 표시줄의 XP 요소만 숨기고,
+   컨테이너 자체는 UI 전환 토글을 담기 위해 유지합니다.
+   (토글까지 숨기면 신버전으로 되돌아올 수 없게 됩니다) */
+.xp-taskbar {
+  /* 구버전: 배경/테두리 없는 투명 래퍼 */
+  background: none;
+  border: none;
+  box-shadow: none;
+  height: 0;
+}
+
+.xp-taskbar > *:not(.ui-switch) {
+  display: none;
+}
+
+body[data-ui="xp"] .xp-taskbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 32px;
+  z-index: 10000;
+  background: linear-gradient(
+    180deg,
+    #3f8cf3 0%,
+    var(--xp-taskbar-1) 12%,
+    var(--xp-taskbar-1) 88%,
+    #1941a5 100%
+  );
+  border-top: 1px solid #4d8bef;
+  box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.3);
+  padding-right: 8px;
+  min-width: 1440px;
+}
+
+body[data-ui="xp"] .xp-start {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 100%;
+  padding: 0 22px 0 10px;
+  border: none;
+  border-radius: 0 9px 9px 0;
+  background: linear-gradient(
+    180deg,
+    #63bf5e 0%,
+    var(--xp-start-1) 16%,
+    var(--xp-start-2) 55%,
+    #1c6b21 100%
+  );
+  color: #fff;
+  font-size: 0.86rem;
+  font-weight: bold;
+  font-style: italic;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+}
+
+body[data-ui="xp"] .xp-start:hover {
+  filter: brightness(1.12);
+}
+
+body[data-ui="xp"] .xp-start-orb {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 30%, #fff 8%, #ffe14d 42%, #e8a000);
+  box-shadow: 0 0 3px rgba(0, 0, 0, 0.35);
+}
+
+/* 작업 표시줄에 열린 창 버튼 */
+body[data-ui="xp"] .xp-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 23px;
+  padding: 0 12px;
+  max-width: 190px;
+  border: 1px solid #1941a5;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #4a95f5 0%, #1e5fd4 100%);
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.35);
+  color: #fff;
+  font-size: 0.75rem;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+body[data-ui="xp"] .xp-task:hover {
+  filter: brightness(1.14);
+}
+
+body[data-ui="xp"] .xp-task.active {
+  background: linear-gradient(180deg, #1b4fae 0%, #2f6fd8 100%);
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+/* 시스템 트레이 */
+body[data-ui="xp"] .xp-tray {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 100%;
+  padding: 0 12px 0 14px;
+  background: linear-gradient(
+    180deg,
+    #1cb0f0 0%,
+    #14a0e4 14%,
+    #1387cf 60%,
+    #0d6cb5 100%
+  );
+  border-left: 1px solid #16a3e8;
+  color: #fff;
+  font-size: 0.76rem;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------------------------------------------------------
+   UI 버전 전환 토글 (양쪽 테마 공통 위치, 스킨만 다름)
+   --------------------------------------------------------- */
+.ui-switch {
+  position: fixed;
+  top: 12px;
+  right: 16px;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: bold;
+  cursor: pointer;
+  border-radius: 20px;
+  border: 1px solid #ccc;
+  background: #fff;
+  color: #444;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.ui-switch:hover {
+  background: #f4f4f4;
+}
+
+/* XP 모드에서는 창 버튼(_ □ X)과 겹치지 않도록
+   작업 표시줄 위(트레이 왼쪽)로 내려서 배치합니다.
+   트레이 폭이 시계 길이에 따라 변하므로 고정 offset 대신
+   작업 표시줄의 flex 흐름에 참여시킵니다. */
+body[data-ui="xp"] .ui-switch {
+  position: static;
+  margin-left: auto;
+  flex: 0 0 auto;
+  height: 23px;
+  padding: 0 12px;
+  font-size: 0.75rem;
+  font-weight: normal;
+  border-radius: 3px;
+  border: 1px solid #8e8d78;
+  color: var(--xp-text);
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #f2f1e8 45%,
+    #e3e0d0 55%,
+    #d6d2c2 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px #fff,
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+body[data-ui="xp"] .ui-switch:hover {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #fdf6d8 45%,
+    #f7e9a8 55%,
+    #f0dd8c 100%
+  );
+  border-color: #e0a900;
+}
+
+/* XP 모드에서만 보이는 요소 : 구버전에서는 숨김 */
+.xp-only {
+  display: none;
+}
+
+body[data-ui="xp"] .xp-only {
+  display: block;
+}
+
+body[data-ui="xp"] .xp-titlebar.xp-only,
+body[data-ui="xp"] .xp-agree-row.xp-only,
+body[data-ui="xp"] .xp-consent.xp-only,
+body[data-ui="xp"] .xp-infobox.xp-only {
+  display: flex;
+}
+
+/* 창 최소화 연출 */
+body[data-ui="xp"] .container.minimized {
+  display: none;
+}

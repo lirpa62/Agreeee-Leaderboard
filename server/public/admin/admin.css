@@ -1,0 +1,403 @@
+/* 관리자 화면 — 리더보드 신버전과 같은 XP(Luna) 톤 */
+
+:root {
+  --xp-face: #ece9d8;
+  --xp-face-alt: #f5f4ea;
+  --xp-shadow: #aca899;
+  --xp-dark: #716f64;
+  --xp-title-1: #0058ee;
+  --xp-title-2: #3a93ff;
+  --xp-title-3: #0855dd;
+  --xp-blue-border: #0054e3;
+  --xp-highlight: #316ac5;
+  --xp-font: "Tahoma", "Pretendard Variable", "Pretendard",
+    "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  font-family: var(--xp-font);
+}
+
+body {
+  margin: 0;
+  padding: 24px 16px 40px;
+  background: linear-gradient(180deg, #4b8bd4 0%, #6ba7e4 40%, #558b2f 100%)
+    fixed;
+  min-height: 100vh;
+  font-size: 13px;
+}
+
+body.login-page {
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+
+/* ── 창 ──────────────────────────────────────────────── */
+.xp-window {
+  background: var(--xp-face);
+  border: 1px solid var(--xp-blue-border);
+  border-radius: 8px 8px 0 0;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 10px 30px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.main-window {
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.login-box {
+  width: 340px;
+}
+
+.xp-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 30px;
+  padding: 0 4px 0 8px;
+  background: linear-gradient(
+    180deg,
+    var(--xp-title-2) 0%,
+    var(--xp-title-1) 42%,
+    var(--xp-title-3) 88%,
+    #26a0ff 100%
+  );
+  border-bottom: 1px solid #003fc4;
+}
+
+.xp-titlebar-text {
+  flex: 1;
+  color: #fff;
+  font-size: 12px;
+  font-weight: bold;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.55);
+}
+
+.xp-btns {
+  display: flex;
+  gap: 2px;
+}
+
+.xp-btn {
+  width: 21px;
+  height: 21px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 3px;
+  color: #fff;
+  font-size: 11px;
+  font-weight: bold;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  background: linear-gradient(180deg, #5babff 0%, #1c65d8 55%, #0d4fbd 100%);
+}
+
+.xp-btn.close {
+  background: linear-gradient(180deg, #f7a08a 0%, #d5442a 45%, #a92d17 100%);
+}
+
+.xp-btn:hover {
+  filter: brightness(1.18);
+}
+
+.xp-window-body {
+  padding: 14px 16px 18px;
+}
+
+/* ── 컨트롤 ───────────────────────────────────────────── */
+.xp-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 84px;
+  padding: 5px 14px;
+  font-size: 12px;
+  color: #000;
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #f2f1e8 45%,
+    #e3e0d0 55%,
+    #d6d2c2 100%
+  );
+  border: 1px solid #8e8d78;
+  border-radius: 3px;
+  box-shadow: inset 0 0 0 1px #fff;
+  cursor: pointer;
+}
+
+.xp-button:hover {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #fdf6d8 45%,
+    #f7e9a8 55%,
+    #f0dd8c 100%
+  );
+  border-color: #e0a900;
+}
+
+.xp-button.primary {
+  font-weight: bold;
+  border-color: #4b7d45;
+  background: linear-gradient(
+    180deg,
+    #fbfff9 0%,
+    #ddf0d5 45%,
+    #bfe3b2 55%,
+    #a5d495 100%
+  );
+}
+
+.xp-button.danger {
+  border-color: #a4565a;
+  background: linear-gradient(
+    180deg,
+    #fffafa 0%,
+    #f6d9d9 45%,
+    #eebfbf 55%,
+    #e0a5a5 100%
+  );
+}
+
+.xp-input {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 13px;
+  border: 1px solid var(--xp-dark);
+  background: #fff;
+  box-shadow: inset 1px 1px 1px rgba(0, 0, 0, 0.22);
+}
+
+.xp-input:focus {
+  outline: none;
+  border-color: var(--xp-blue-border);
+}
+
+/* ── 툴바 / 탭 ────────────────────────────────────────── */
+.toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+}
+
+.tab {
+  padding: 5px 14px;
+  font-size: 12px;
+  background: linear-gradient(180deg, #fff 0%, #e8e5d8 100%);
+  border: 1px solid #8e8d78;
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  cursor: pointer;
+}
+
+.tab.active {
+  background: linear-gradient(180deg, #fff 0%, #fdf6d8 100%);
+  border-color: #e0a900;
+  font-weight: bold;
+}
+
+.badge {
+  display: inline-block;
+  min-width: 18px;
+  margin-left: 4px;
+  padding: 0 5px;
+  font-size: 11px;
+  text-align: center;
+  border-radius: 9px;
+  background: var(--xp-highlight);
+  color: #fff;
+}
+
+/* ── 제출 카드 ────────────────────────────────────────── */
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.card {
+  border: 1px solid var(--xp-shadow);
+  background: #fff;
+  padding: 0;
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  background: linear-gradient(
+    180deg,
+    #9db4ee 0%,
+    #7697e7 45%,
+    #6d8fe0 100%
+  );
+  color: #fff;
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.35);
+  font-weight: bold;
+}
+
+.card.pending .card-head {
+  background: linear-gradient(
+    180deg,
+    var(--xp-title-2) 0%,
+    var(--xp-title-1) 42%,
+    var(--xp-title-3) 100%
+  );
+}
+
+.card-id {
+  font-size: 11px;
+  opacity: 0.85;
+}
+
+.league {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: normal;
+  background: rgba(255, 255, 255, 0.9);
+  color: #000;
+  padding: 2px 8px;
+  border-radius: 2px;
+  text-shadow: none;
+}
+
+.card-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 18px;
+  padding: 12px;
+}
+
+.field {
+  display: flex;
+  gap: 8px;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.field .k {
+  flex: 0 0 118px;
+  color: #555;
+}
+
+.field .v {
+  flex: 1;
+  word-break: break-all;
+}
+
+.field.full {
+  grid-column: 1 / -1;
+}
+
+/* 검증 결과 배지 */
+.verdict {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 2px;
+  font-size: 11px;
+  font-weight: bold;
+  border: 1px solid;
+}
+
+.verdict.pass {
+  background: #ddf0d5;
+  border-color: #4b7d45;
+  color: #1d4a18;
+}
+
+.verdict.fail {
+  background: #f6d9d9;
+  border-color: #a4565a;
+  color: #6d1a1e;
+}
+
+.verdict.review {
+  background: #fdf6d8;
+  border-color: #e0a900;
+  color: #6b4d00;
+}
+
+.card-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-top: 1px solid #e2dfd0;
+  background: var(--xp-face-alt);
+}
+
+.card-actions .note {
+  flex: 1;
+}
+
+.status-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border: 1px solid var(--xp-shadow);
+  background: #fff;
+}
+
+a {
+  color: #0645ad;
+}
+
+.empty {
+  text-align: center;
+  color: #555;
+  padding: 30px;
+}
+
+.login-msg {
+  margin: 0 0 10px;
+  font-size: 12px;
+}
+
+.error {
+  color: #c00;
+  font-size: 12px;
+  min-height: 16px;
+  margin: 6px 0 0;
+}
+
+.row-end {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 12px;
+}
+
+.msg {
+  font-size: 12px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  border: 1px solid;
+}
+
+.msg.ok {
+  background: #ddf0d5;
+  border-color: #4b7d45;
+}
+
+.msg.err {
+  background: #f6d9d9;
+  border-color: #a4565a;
+}
+
+@media (max-width: 760px) {
+  .card-body {
+    grid-template-columns: 1fr;
+  }
+}

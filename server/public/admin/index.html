@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>기록 검토 - 리더보드 관리자</title>
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <div class="xp-window main-window">
+      <div class="xp-titlebar">
+        <span class="xp-titlebar-icon">📋</span>
+        <span class="xp-titlebar-text">기록 제출 검토</span>
+        <span class="xp-btns">
+          <button type="button" class="xp-btn close" id="logoutBtn" title="로그아웃">
+            ✕
+          </button>
+        </span>
+      </div>
+
+      <div class="xp-window-body">
+        <div class="toolbar">
+          <div class="tabs" id="tabs">
+            <button type="button" class="tab active" data-status="pending">
+              대기 <span class="badge" id="cnt-pending">0</span>
+            </button>
+            <button type="button" class="tab" data-status="approved">
+              승인 <span class="badge" id="cnt-approved">0</span>
+            </button>
+            <button type="button" class="tab" data-status="rejected">
+              반려 <span class="badge" id="cnt-rejected">0</span>
+            </button>
+            <button type="button" class="tab" data-status="all">전체</button>
+          </div>
+          <button type="button" class="xp-button" id="refreshBtn">새로고침</button>
+        </div>
+
+        <div id="list" class="list"></div>
+        <p class="empty" id="empty" hidden>표시할 제출이 없습니다.</p>
+      </div>
+    </div>
+
+    <script src="admin.js"></script>
+  </body>
+</html>
