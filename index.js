@@ -1,3 +1,114 @@
+/* =========================================================
+   UI 버전 전환 (구버전 / 신버전 XP)
+   - 기본값: 신버전(xp)
+   - 선택은 localStorage에 저장되어 다음 방문에도 유지됩니다.
+   ========================================================= */
+(function initUiVersion() {
+  const STORAGE_KEY = "uiVersion";
+  const body = document.body;
+  const toggleBtn = document.getElementById("uiVersionToggle");
+  const label = document.getElementById("uiVersionLabel");
+
+  function readSaved() {
+    try {
+      return localStorage.getItem(STORAGE_KEY);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function applyVersion(version) {
+    if (version === "legacy") {
+      body.removeAttribute("data-ui");
+      label.textContent = "🪟 신버전 UI로 보기";
+    } else {
+      body.setAttribute("data-ui", "xp");
+      label.textContent = "🖥️ 구버전 UI로 보기";
+    }
+  }
+
+  // 저장된 값이 없으면 신버전(xp)이 기본
+  let current = readSaved() === "legacy" ? "legacy" : "xp";
+  applyVersion(current);
+
+  toggleBtn.addEventListener("click", function () {
+    current = current === "xp" ? "legacy" : "xp";
+    applyVersion(current);
+    try {
+      localStorage.setItem(STORAGE_KEY, current);
+    } catch (e) {
+      /* 저장 불가 환경(사생활 보호 모드 등)에서는 무시 */
+    }
+    // 테마 변경으로 캔버스 크기가 달라질 수 있어 차트를 다시 맞춤
+    if (typeof myChart !== "undefined") {
+      myChart.resize();
+    }
+    checkScroll();
+  });
+})();
+
+/* =========================================================
+   XP 데스크톱 연출 (신버전 전용)
+   ========================================================= */
+(function initXpChrome() {
+  // 작업 표시줄 시계
+  const clock = document.getElementById("xpClock");
+  function tick() {
+    const now = new Date();
+    let h = now.getHours();
+    const m = String(now.getMinutes()).padStart(2, "0");
+    const meridiem = h < 12 ? "오전" : "오후";
+    h = h % 12 || 12;
+    clock.textContent = `${meridiem} ${h}:${m}`;
+  }
+  tick();
+  setInterval(tick, 10000);
+
+  const container = document.querySelector(".container");
+  const taskBtn = document.getElementById("xpTaskWindow");
+
+  // 최소화 / 작업 표시줄 버튼으로 복원
+  document.getElementById("xpMinimize").addEventListener("click", function () {
+    container.classList.add("minimized");
+    taskBtn.classList.remove("active");
+  });
+
+  taskBtn.addEventListener("click", function () {
+    container.classList.toggle("minimized");
+    taskBtn.classList.toggle("active", !container.classList.contains("minimized"));
+  });
+
+  // 닫기 / 동의하지 않음 : 게임처럼 거부당하는 연출
+  function refuse(message) {
+    alert(message);
+  }
+
+  document.getElementById("xpClose").addEventListener("click", function () {
+    refuse("이용약관에 동의하지 않으면 리더보드를 종료할 수 없습니다.");
+  });
+
+  document.getElementById("xpDisagree").addEventListener("click", function () {
+    refuse(
+      "동의하지 않으셨습니다.\n하지만 리더보드는 계속됩니다.\n\n(제 3 조에 의거하여 인정협회는 거부를 인정하지 않습니다)",
+    );
+  });
+
+  // 약관 동의 체크 해제 시도 시 되돌림
+  const consent = document.getElementById("xpConsent");
+  consent.addEventListener("change", function () {
+    if (!consent.checked) {
+      refuse("이용약관 동의는 필수 항목입니다.");
+      consent.checked = true;
+    }
+  });
+
+  document.getElementById("xpStart").addEventListener("click", function () {
+    alert(
+      "시작 메뉴는 이용약관 제 12 조에 동의한 이후에 사용할 수 있습니다.\n\n(아직 제 4 조입니다)",
+    );
+  });
+})();
+
 // FOUT 문제 해결 : 폰트 로딩 감지 및 화면 표시
 document.fonts.ready.then(function () {
   document.body.classList.add("fonts-loaded");

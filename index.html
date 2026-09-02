@@ -29,7 +29,20 @@
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
     />
     <link rel="stylesheet" href="index.css" />
+    <link rel="stylesheet" href="theme-xp.css" />
     <title>이용약관 동의 게임 리더보드</title>
+    <script>
+      // FOUC 방지: CSS 적용 전에 저장된 UI 버전을 미리 반영 (기본값: 신버전 xp)
+      (function () {
+        try {
+          var saved = localStorage.getItem("uiVersion");
+          document.documentElement.dataset.uiInit =
+            saved === "legacy" ? "legacy" : "xp";
+        } catch (e) {
+          document.documentElement.dataset.uiInit = "xp";
+        }
+      })();
+    </script>
     <!--  MIT License Notice:
 
     Chart.js
@@ -55,22 +68,88 @@
   </head>
   <body>
     <div class="container">
-      <h2>'이용약관에 동의하고 싶어' 리더보드</h2>
-      <p class="notice">
-        점에 마우스를 올리면 기록을 확인할 수 있습니다!<br />
-        (<strong
-          >10,000 팔로우 이상, 클래식 모드, 첫번째 클리어만 등록됩니다 / 풍선
-          숏컷은 제외</strong
-        >)
-      </p>
-
-      <div class="center-align">
-        <a href="https://naver.me/5Ii0orla" target="_blank" class="request-btn"
-          >📝 기록 등록 요청</a
+      <!-- XP 창 타이틀바 (신버전 전용) -->
+      <div class="xp-titlebar xp-only">
+        <span class="xp-titlebar-icon">📜</span>
+        <span class="xp-titlebar-text"
+          >이용약관에 동의하고 싶어 - 리더보드</span
         >
+        <span class="xp-btns">
+          <span class="xp-btn" id="xpMinimize" title="최소화">_</span>
+          <span class="xp-btn" title="최대화">□</span>
+          <span class="xp-btn close" id="xpClose" title="닫기">✕</span>
+        </span>
       </div>
 
-      <div class="content-wrapper">
+      <div class="xp-window-body">
+        <h2>'이용약관에 동의하고 싶어' 리더보드</h2>
+
+        <!-- 구버전 안내문 -->
+        <p class="notice legacy-only">
+          점에 마우스를 올리면 기록을 확인할 수 있습니다!<br />
+          (<strong
+            >10,000 팔로우 이상, 클래식 모드, 첫번째 클리어만 등록됩니다 / 풍선
+            숏컷은 제외</strong
+          >)
+        </p>
+
+        <!-- 신버전: XP 정보 상자 + 약관 스크롤 박스 연출 -->
+        <div class="xp-infobox xp-only">
+          <span class="xp-info-icon">i</span>
+          <p class="notice" style="text-align: left; margin: 0">
+            점에 마우스를 올리면 기록을 확인할 수 있습니다!<br />
+            (<strong
+              >10,000 팔로우 이상, 클래식 모드, 첫번째 클리어만 등록됩니다 /
+              풍선 숏컷은 제외</strong
+            >)
+          </p>
+        </div>
+
+        <div class="xp-group xp-only">
+          <span class="xp-group-title">리더보드 이용약관</span>
+          <div class="xp-eula">
+            <h4>제 1 조 (기록의 등록)</h4>
+            본 리더보드는 <strong>10,000 팔로우 이상</strong>, 클래식 모드,
+            첫번째 클리어 기록에 한하여 등록됩니다. 풍선 숏컷을 사용한 기록은 본
+            조항의 적용을 받지 아니하며 별도의 리그에 등재됩니다.
+            <h4>제 2 조 (시간의 산정)</h4>
+            총 기록은 '이용약관과 마주한 시간'과 '클리어한 회차 플레이
+            시간(약관 + 본 게임)'의 합으로 산정합니다. 부득이하게 클리어한
+            회차의 약관 플레이 시간이 중복되어 합산됨에 동의합니다.
+            <h4>제 3 조 (인정협회의 권한)</h4>
+            캐주얼 모드 또는 풍선 숏컷을 사용한 기록은 인정협회가 이를 인정하지
+            아니합니다. 다만 재도전을 통해 클래식 모드로 클리어한 경우, 이름 뒤
+            * 표시와 함께 명예의 전당 입성을 허락합니다.
+            <h4>제 4 조 (책임의 한계)</h4>
+            본 약관을 끝까지 스크롤한 이용자는 극히 드물며, 운영자는 이에 대해
+            어떠한 책임도 지지 않습니다. 여기까지 읽으셨다면 당신은 진정한
+            약관러입니다.
+          </div>
+          <label class="xp-consent xp-only">
+            <input type="checkbox" id="xpConsent" checked />
+            위 이용약관을 모두 읽었으며 이에 동의합니다.
+          </label>
+        </div>
+
+        <div class="center-align legacy-only">
+          <a href="https://naver.me/5Ii0orla" target="_blank" class="request-btn"
+            >📝 기록 등록 요청</a
+          >
+        </div>
+
+        <div class="xp-agree-row xp-only">
+          <a
+            href="https://naver.me/5Ii0orla"
+            target="_blank"
+            class="xp-button agree"
+            >📝 기록 등록 요청</a
+          >
+          <button type="button" class="xp-button disagree" id="xpDisagree">
+            동의하지 않음
+          </button>
+        </div>
+
+        <div class="content-wrapper">
         <div class="chart-section">
           <canvas id="clearChart"></canvas>
         </div>
@@ -366,7 +445,34 @@
             >]
           </li>
         </ul>
+        </div>
       </div>
+    </div>
+
+    <!-- XP 작업 표시줄 (신버전 전용) -->
+    <div class="xp-taskbar">
+      <button type="button" class="xp-start" id="xpStart">
+        <span class="xp-start-orb"></span>
+        시작
+      </button>
+      <span class="xp-task active" id="xpTaskWindow">
+        📜 이용약관에 동의하고 싶어 - 리더보드
+      </span>
+
+      <!-- UI 버전 전환 토글 (구버전에서는 우측 상단 고정으로 표시됨) -->
+      <button
+        type="button"
+        id="uiVersionToggle"
+        class="ui-switch"
+        title="구버전 / 신버전 UI 전환"
+      >
+        <span id="uiVersionLabel">🖥️ 구버전 UI로 보기</span>
+      </button>
+
+      <span class="xp-tray">
+        <span>🔊</span>
+        <span id="xpClock">오후 3:14</span>
+      </span>
     </div>
 
     <script src="index.js"></script>
