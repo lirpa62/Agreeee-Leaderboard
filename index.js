@@ -401,9 +401,31 @@ const hoverAxisPlugin = {
 
 const ctx = document.getElementById("clearChart").getContext("2d");
 
+/* ---------------------------------------------------------
+   차트 가독성 설정
+   - 이름표는 상위 LABEL_RANK_LIMIT 위까지만 상시 표시
+     (전체 표시 시 113개 이름이 화면을 가득 채움)
+   - X축은 기본적으로 X_ZOOM_LIMIT(분) 이하만 보여줌
+     기록의 절반이 약관 6시간 이내에 몰려 있어,
+     18시간까지 펼치면 대다수가 왼쪽에 짓눌립니다.
+   --------------------------------------------------------- */
+const LABEL_RANK_LIMIT = 15;
+const X_ZOOM_LIMIT = 360; // 6시간
+let isXZoomed = true; // 기본: 확대 보기
+
+// totalMin 오름차순 정렬 순서가 곧 순위이므로 labelRank로 저장
+function assignLabelRank(list) {
+  list.forEach((d, i) => {
+    d.labelRank = i;
+  });
+  return list;
+}
+
 // 차트 초기 데이터에 재도전 데이터 포함 (정렬 포함)
-const initialChartData = [...processedRecordData, ...processedRetryData].sort(
-  (a, b) => a.totalMin - b.totalMin,
+const initialChartData = assignLabelRank(
+  [...processedRecordData, ...processedRetryData].sort(
+    (a, b) => a.totalMin - b.totalMin,
+  ),
 );
 
 const myChart = new Chart(ctx, {
@@ -489,6 +511,9 @@ const myChart = new Chart(ctx, {
       x: {
         type: "linear",
         position: "bottom",
+        // 확대 보기에서는 6시간까지만. 그 밖의 기록은 '전체 보기'로 확인
+        // (값은 applyXZoom() 에서 갱신합니다)
+        max: X_ZOOM_LIMIT,
         title: {
           display: true,
           text: "이용약관과 마주한 시간",
@@ -667,6 +692,13 @@ const myChart = new Chart(ctx, {
         anchor: "center",
         offset: 4,
         padding: { left: 4, right: 4 },
+        // 113개 이름을 항상 띄우면 화면이 글자로 가득 차므로
+        // 상위권 + 호버/검색 대상만 표시합니다. (LABEL_RANK_LIMIT)
+        display: function (context) {
+          if (context.dataIndex === activePoint) return true;
+          const d = context.dataset.data[context.dataIndex];
+          return d && d.labelRank !== undefined && d.labelRank < LABEL_RANK_LIMIT;
+        },
         color: (context) => {
           if (activePoint !== null && context.dataIndex !== activePoint)
             return "rgba(0,0,0,0.1)";
@@ -685,6 +717,34 @@ const myChart = new Chart(ctx, {
   },
 });
 
+/* ---------------------------------------------------------
+   X축 확대/전체 보기 전환
+   --------------------------------------------------------- */
+function applyXZoom() {
+  const btn = document.getElementById("xZoomBtn");
+  const hint = document.getElementById("xZoomHint");
+
+  myChart.options.scales.x.max = isXZoomed ? X_ZOOM_LIMIT : undefined;
+  myChart.update();
+
+  if (isXZoomed) {
+    // 확대 보기에서 잘려 보이지 않는 기록 수를 안내
+    const hidden = myChart.data.datasets[0].data.filter(
+      (d) => d.x > X_ZOOM_LIMIT,
+    ).length;
+    btn.textContent = "🔍 전체 보기 (18시간까지)";
+    hint.textContent = hidden > 0 ? `6시간 초과 ${hidden}명 숨김` : "";
+  } else {
+    btn.textContent = "🔍 확대 보기 (6시간까지)";
+    hint.textContent = "";
+  }
+}
+
+document.getElementById("xZoomBtn").addEventListener("click", function () {
+  isXZoomed = !isXZoomed;
+  applyXZoom();
+});
+
 function getDisplayData() {
   const isShortcutChecked = document.getElementById("toggleShortcut").checked;
 
@@ -694,7 +754,8 @@ function getDisplayData() {
     finalData = [...finalData, ...processedShortcutData]; // 숏컷 데이터
   }
 
-  return finalData.sort((a, b) => a.totalMin - b.totalMin);
+  // 정렬 후 순위를 다시 매겨 이름표 표시 기준(labelRank)을 갱신
+  return assignLabelRank(finalData.sort((a, b) => a.totalMin - b.totalMin));
 }
 
 function renderRanking() {
@@ -857,7 +918,8 @@ searchInput.addEventListener("keyup", function (e) {
 function updateChart() {
   const displayData = getDisplayData();
   myChart.data.datasets[0].data = displayData;
-  myChart.update();
+  // 데이터가 바뀌면 숨김 인원 수도 달라지므로 함께 갱신
+  applyXZoom();
 }
 
 function renderRetries() {
@@ -1127,6 +1189,7 @@ renderRanking();
 renderSpeedrun();
 renderShortcuts();
 renderRetries();
+applyXZoom(); // X축 확대 상태 및 안내 문구 초기화
 
 // 리스트 생성 후 스크롤 상태 재확인 (DOM 높이 변경 반영)
 setTimeout(checkScroll, 100);

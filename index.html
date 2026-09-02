@@ -151,7 +151,15 @@
 
         <div class="content-wrapper" id="sectionMain">
         <div class="chart-section">
-          <canvas id="clearChart"></canvas>
+          <div class="chart-controls">
+            <button type="button" id="xZoomBtn" class="chart-ctrl-btn">
+              🔍 전체 보기 (18시간까지)
+            </button>
+            <span id="xZoomHint" class="chart-hint"></span>
+          </div>
+          <div class="chart-canvas-wrap">
+            <canvas id="clearChart"></canvas>
+          </div>
         </div>
 
         <div class="rank-section">

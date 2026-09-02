@@ -354,6 +354,42 @@ body[data-ui="xp"] .rank-section {
   background: var(--xp-face-alt);
 }
 
+/* 차트 컨트롤 : XP 버튼 스킨 */
+body[data-ui="xp"] .chart-ctrl-btn {
+  border-radius: 3px;
+  border: 1px solid #8e8d78;
+  color: var(--xp-text);
+  font-weight: normal;
+  font-size: 0.74rem;
+  padding: 3px 12px;
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #f2f1e8 45%,
+    #e3e0d0 55%,
+    #d6d2c2 100%
+  );
+  box-shadow:
+    inset 0 0 0 1px #fff,
+    0 1px 1px rgba(0, 0, 0, 0.12);
+  transition: none;
+}
+
+body[data-ui="xp"] .chart-ctrl-btn:hover {
+  background: linear-gradient(
+    180deg,
+    #fff 0%,
+    #fdf6d8 45%,
+    #f7e9a8 55%,
+    #f0dd8c 100%
+  );
+  border-color: #e0a900;
+}
+
+body[data-ui="xp"] .chart-hint {
+  color: #6b6b6b;
+}
+
 body[data-ui="xp"] .rank-title-wrapper {
   border-bottom: 1px solid var(--xp-shadow);
   padding-bottom: 8px;
@@ -476,64 +512,34 @@ body[data-ui="xp"] .speedrun-item:nth-child(3) .rank-badge {
   background: linear-gradient(180deg, #e8b183 0%, #b96f28 100%);
 }
 
-/* XP 스크롤바 */
 /* ---------------------------------------------------------
    XP 스크롤바 (페이지 전체 + 내부 스크롤 영역 공통)
-   양 끝 화살표 버튼까지 재현합니다.
    --------------------------------------------------------- */
-body[data-ui="xp"],
-body[data-ui="xp"] .rank-list,
-body[data-ui="xp"] .xp-eula,
-body[data-ui="xp"] .bottom-section.maximized,
-body[data-ui="xp"] .casual-mode.maximized {
-  scrollbar-width: auto;
-  scrollbar-color: #c7c3b2 #f1efe2;
-}
-
 body[data-ui="xp"]::-webkit-scrollbar,
 body[data-ui="xp"] .rank-list::-webkit-scrollbar,
 body[data-ui="xp"] .xp-eula::-webkit-scrollbar,
 body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar,
 body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar {
-  width: 17px;
-  height: 17px;
+  width: 16px;
 }
 
-/* 트랙 : XP 특유의 점묘(dither) 질감 */
 body[data-ui="xp"]::-webkit-scrollbar-track,
 body[data-ui="xp"] .rank-list::-webkit-scrollbar-track,
 body[data-ui="xp"] .xp-eula::-webkit-scrollbar-track,
 body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar-track,
 body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar-track {
-  background-color: #f1efe2;
-  background-image:
-    linear-gradient(45deg, #e4e1d1 25%, transparent 25%, transparent 75%, #e4e1d1 75%),
-    linear-gradient(45deg, #e4e1d1 25%, transparent 25%, transparent 75%, #e4e1d1 75%);
-  background-size: 4px 4px;
-  background-position:
-    0 0,
-    2px 2px;
-  border-left: 1px solid #d3cfbe;
+  background: #f1efe2;
+  border-left: 1px solid var(--xp-shadow);
 }
 
-/* 손잡이 : 볼록한 베벨 */
 body[data-ui="xp"]::-webkit-scrollbar-thumb,
 body[data-ui="xp"] .rank-list::-webkit-scrollbar-thumb,
 body[data-ui="xp"] .xp-eula::-webkit-scrollbar-thumb,
 body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar-thumb,
 body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar-thumb {
-  background: linear-gradient(
-    90deg,
-    #fdfdfa 0%,
-    #efede1 18%,
-    #dedac8 55%,
-    #c7c3b2 100%
-  );
+  background: linear-gradient(90deg, #fff 0%, #d7d3c3 40%, #b8b3a1 100%);
   border: 1px solid #8e8d78;
   border-radius: 2px;
-  box-shadow:
-    inset 1px 1px 0 #fff,
-    inset -1px -1px 0 #b0ac9b;
 }
 
 body[data-ui="xp"]::-webkit-scrollbar-thumb:hover,
@@ -541,69 +547,7 @@ body[data-ui="xp"] .rank-list::-webkit-scrollbar-thumb:hover,
 body[data-ui="xp"] .xp-eula::-webkit-scrollbar-thumb:hover,
 body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar-thumb:hover,
 body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(
-    90deg,
-    #fff 0%,
-    #eaf2fd 18%,
-    #cfe0f8 55%,
-    #a9c4ec 100%
-  );
-  border-color: #5079c0;
-}
-
-/* 양 끝 화살표 버튼 */
-body[data-ui="xp"]::-webkit-scrollbar-button:vertical,
-body[data-ui="xp"] .rank-list::-webkit-scrollbar-button:vertical,
-body[data-ui="xp"] .xp-eula::-webkit-scrollbar-button:vertical,
-body[data-ui="xp"] .bottom-section.maximized::-webkit-scrollbar-button:vertical,
-body[data-ui="xp"] .casual-mode.maximized::-webkit-scrollbar-button:vertical {
-  height: 17px;
-  border: 1px solid #8e8d78;
-  border-radius: 2px;
-  background-color: #ebe8db;
-  background-repeat: no-repeat;
-  background-position: center;
-  background-size: 7px 7px;
-  box-shadow:
-    inset 1px 1px 0 #fff,
-    inset -1px -1px 0 #b0ac9b;
-}
-
-/* 위쪽 화살표 (▲) */
-body[data-ui="xp"]::-webkit-scrollbar-button:vertical:decrement,
-body[data-ui="xp"] .rank-list::-webkit-scrollbar-button:vertical:decrement,
-body[data-ui="xp"] .xp-eula::-webkit-scrollbar-button:vertical:decrement,
-body[data-ui="xp"]
-  .bottom-section.maximized::-webkit-scrollbar-button:vertical:decrement,
-body[data-ui="xp"]
-  .casual-mode.maximized::-webkit-scrollbar-button:vertical:decrement {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'><path d='M4 1L7.5 6H0.5z' fill='%23404040'/></svg>");
-}
-
-/* 아래쪽 화살표 (▼) */
-body[data-ui="xp"]::-webkit-scrollbar-button:vertical:increment,
-body[data-ui="xp"] .rank-list::-webkit-scrollbar-button:vertical:increment,
-body[data-ui="xp"] .xp-eula::-webkit-scrollbar-button:vertical:increment,
-body[data-ui="xp"]
-  .bottom-section.maximized::-webkit-scrollbar-button:vertical:increment,
-body[data-ui="xp"]
-  .casual-mode.maximized::-webkit-scrollbar-button:vertical:increment {
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'><path d='M4 7L0.5 2h7z' fill='%23404040'/></svg>");
-}
-
-/* 스크롤바 끝에 중복 생기는 보조 버튼 제거 */
-body[data-ui="xp"]::-webkit-scrollbar-button:vertical:start:increment,
-body[data-ui="xp"]::-webkit-scrollbar-button:vertical:end:decrement,
-body[data-ui="xp"] .rank-list::-webkit-scrollbar-button:vertical:start:increment,
-body[data-ui="xp"] .rank-list::-webkit-scrollbar-button:vertical:end:decrement,
-body[data-ui="xp"] .xp-eula::-webkit-scrollbar-button:vertical:start:increment,
-body[data-ui="xp"] .xp-eula::-webkit-scrollbar-button:vertical:end:decrement {
-  display: none;
-}
-
-body[data-ui="xp"]::-webkit-scrollbar-corner,
-body[data-ui="xp"] .rank-list::-webkit-scrollbar-corner {
-  background: #ebe8db;
+  background: linear-gradient(90deg, #fff 0%, #e3ecfa 40%, #a9c4ec 100%);
 }
 
 /* ---------------------------------------------------------

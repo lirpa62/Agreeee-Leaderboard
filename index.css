@@ -94,6 +94,46 @@ h2 {
   border: 1px solid #eee;
   border-radius: 10px;
   padding: 10px;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 차트 상단 컨트롤 (X축 확대/전체 보기) */
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.chart-ctrl-btn {
+  background: #fff;
+  border: 1px solid #ccc;
+  color: #555;
+  padding: 5px 14px;
+  border-radius: 15px;
+  font-size: 0.75rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.chart-ctrl-btn:hover {
+  background: #f9f9f9;
+  border-color: #bbb;
+}
+
+.chart-hint {
+  font-size: 0.7rem;
+  color: #888;
+}
+
+/* 캔버스가 컨트롤 영역을 제외한 남은 공간을 채우도록.
+   Chart.js가 부모 높이를 참조하므로 래퍼에 높이를 위임합니다. */
+.chart-canvas-wrap {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
 }
 
 .casual-mode {
