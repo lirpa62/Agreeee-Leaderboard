@@ -17,6 +17,7 @@ const { validateSubmission, judgeFollowers } = require("./validate");
 const dataFile = require("./dataFile");
 const git = require("./git");
 const captcha = require("./captcha");
+const notify = require("./notify");
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -80,6 +81,7 @@ function rateLimit({ windowMs, max, key = "ip" }) {
     rateBuckets.set(id, bucket);
     if (bucket.count > max) {
       const wait = Math.ceil((bucket.reset - now) / 1000);
+      notify.recordRejection("요청 제한 초과 (429)");
       return res
         .status(429)
         .json({ ok: false, errors: [`요청이 너무 잦습니다. ${wait}초 후 다시 시도해 주세요.`] });
@@ -196,11 +198,13 @@ app.post(
       req.ip,
     );
     if (!captchaResult.ok) {
+      notify.recordRejection(`캡차 실패 — ${captchaResult.reason}`);
       return res.status(400).json({ ok: false, errors: [captchaResult.reason] });
     }
 
     const checked = validateSubmission(req.body || {});
     if (!checked.ok) {
+      notify.recordRejection("입력 검증 실패");
       return res.status(400).json({ ok: false, errors: checked.errors });
     }
     const v = checked.value;
@@ -251,6 +255,16 @@ app.post(
       verifyNote: [verifyNote, judged.note].filter(Boolean).join(" / "),
       submitterIp: req.ip,
     });
+
+    // 알림은 응답을 막지 않도록 await 하지 않습니다.
+    notify.notifyNewSubmission(
+      { ...v, id },
+      {
+        channelName: channel?.channelName || null,
+        followerCount: channel?.followerCount ?? null,
+        verdict: judged.verdict,
+      },
+    );
 
     res.status(201).json({
       ok: true,
@@ -345,6 +359,10 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
     }
 
     db.setStatus(sub.id, "approved", String(req.body?.note || ""));
+    notify.notifyReviewed(sub, "approved", {
+      git: gitResult,
+      note: req.body?.note,
+    });
     res.json({ ok: true, applied, git: gitResult });
   } catch (e) {
     // data.js 수정 실패 시 상태를 바꾸지 않습니다.
@@ -356,6 +374,7 @@ app.post("/api/admin/submissions/:id/reject", requireAdmin, (req, res) => {
   const sub = db.getSubmission(Number(req.params.id));
   if (!sub) return res.status(404).json({ ok: false, error: "제출을 찾을 수 없습니다." });
   db.setStatus(sub.id, "rejected", String(req.body?.note || ""));
+  notify.notifyReviewed(sub, "rejected", { note: req.body?.note });
   res.json({ ok: true });
 });
 
@@ -393,6 +412,11 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
     }
 
     db.revertApproval(sub.id, reason, String(req.body?.note || ""));
+    notify.notifyReviewed(sub, "reverted", {
+      reason,
+      git: gitResult,
+      note: req.body?.note,
+    });
 
     res.json({
       ok: true,
@@ -428,6 +452,7 @@ if (require.main === module) {
     console.log(`data.js 경로     → ${dataFile.DATA_JS_PATH}`);
     console.log(`Git 자동 커밋    → ${git.AUTO_COMMIT ? "켜짐" : "꺼짐"}`);
     console.log(`캡차(Turnstile)  → ${captcha.isEnabled() ? "켜짐" : "꺼짐"}`);
+    console.log(`Discord 알림     → ${notify.isEnabled() ? "켜짐" : "꺼짐"}`);
     if (!captcha.isEnabled()) {
       console.warn(
         "  ⚠ TURNSTILE_SECRET 이 없어 캡차가 꺼져 있습니다.\n" +
