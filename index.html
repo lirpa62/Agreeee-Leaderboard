@@ -481,6 +481,33 @@
       </div>
     </div>
 
+    <!-- XP 스타일 알림 대화상자 (신버전 전용) -->
+    <div class="xp-modal-overlay" id="xpModalOverlay" hidden>
+      <div
+        class="xp-modal"
+        id="xpModal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="xpModalTitle"
+        aria-describedby="xpModalMsg"
+      >
+        <div class="xp-titlebar">
+          <span class="xp-titlebar-icon">📜</span>
+          <span class="xp-titlebar-text" id="xpModalTitle">알림</span>
+          <span class="xp-btns">
+            <span class="xp-btn close" id="xpModalX" title="닫기">✕</span>
+          </span>
+        </div>
+        <div class="xp-modal-body">
+          <span class="xp-modal-icon" id="xpModalIcon">!</span>
+          <p class="xp-modal-msg" id="xpModalMsg"></p>
+        </div>
+        <div class="xp-modal-footer">
+          <button type="button" class="xp-button" id="xpModalOk">확인</button>
+        </div>
+      </div>
+    </div>
+
     <!-- XP 작업 표시줄 (신버전 전용) -->
     <div class="xp-taskbar">
       <button type="button" class="xp-start" id="xpStart">

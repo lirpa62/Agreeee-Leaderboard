@@ -87,18 +87,73 @@
     window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
+  /* -------------------------------------------------------
+     XP 스타일 알림 대화상자
+     - 브라우저 기본 alert 대신 사용
+     - 확인 / X / Enter / Esc / 바깥 클릭으로 닫힘
+     - 닫은 뒤에는 직전 포커스로 되돌립니다.
+     ------------------------------------------------------- */
+  const modalOverlay = document.getElementById("xpModalOverlay");
+  const modalTitle = document.getElementById("xpModalTitle");
+  const modalMsg = document.getElementById("xpModalMsg");
+  const modalOk = document.getElementById("xpModalOk");
+  const modalX = document.getElementById("xpModalX");
+  let lastFocused = null;
+
+  function closeModal() {
+    modalOverlay.hidden = true;
+    if (lastFocused && typeof lastFocused.focus === "function") {
+      lastFocused.focus();
+    }
+    lastFocused = null;
+  }
+
+  function showModal(message, title) {
+    // 구버전에서는 XP 다이얼로그 스타일이 적용되지 않으므로 기본 alert 사용
+    if (document.body.dataset.ui !== "xp") {
+      alert(message);
+      return;
+    }
+    lastFocused = document.activeElement;
+    modalTitle.textContent = title || "이용약관에 동의하고 싶어";
+    modalMsg.textContent = message;
+    modalOverlay.hidden = false;
+    modalOk.focus();
+  }
+
+  modalOk.addEventListener("click", closeModal);
+  modalX.addEventListener("click", closeModal);
+
+  // 바깥(오버레이) 클릭 시 닫기
+  modalOverlay.addEventListener("mousedown", function (e) {
+    if (e.target === modalOverlay) closeModal();
+  });
+
+  // Esc / Enter 로 닫기
+  document.addEventListener("keydown", function (e) {
+    if (modalOverlay.hidden) return;
+    if (e.key === "Escape" || e.key === "Enter") {
+      e.preventDefault();
+      closeModal();
+    }
+  });
+
   // 닫기 / 동의하지 않음 : 게임처럼 거부당하는 연출
-  function refuse(message) {
-    alert(message);
+  function refuse(message, title) {
+    showModal(message, title);
   }
 
   document.getElementById("xpClose").addEventListener("click", function () {
-    refuse("이용약관에 동의하지 않으면 리더보드를 종료할 수 없습니다.");
+    refuse(
+      "이용약관에 동의하지 않으면 리더보드를 종료할 수 없습니다.",
+      "리더보드 종료",
+    );
   });
 
   document.getElementById("xpDisagree").addEventListener("click", function () {
     refuse(
       "동의하지 않으셨습니다.\n하지만 리더보드는 계속됩니다.\n\n(제 3 조에 의거하여 인정협회는 거부를 인정하지 않습니다)",
+      "인정협회",
     );
   });
 
@@ -106,14 +161,15 @@
   const consent = document.getElementById("xpConsent");
   consent.addEventListener("change", function () {
     if (!consent.checked) {
-      refuse("이용약관 동의는 필수 항목입니다.");
+      refuse("이용약관 동의는 필수 항목입니다.", "이용약관 동의");
       consent.checked = true;
     }
   });
 
   document.getElementById("xpStart").addEventListener("click", function () {
-    alert(
+    showModal(
       "시작 메뉴는 이용약관 제 12 조에 동의한 이후에 사용할 수 있습니다.\n\n(아직 제 4 조입니다)",
+      "시작 메뉴",
     );
   });
 
