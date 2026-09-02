@@ -1,4 +1,5 @@
 const STREAMER_COLORS = {
+  "허니츄": "#FFD8D9",
   김뚜띠: "#36A2EB",
   램램: "#92efe2",
   나나양: "#fc3",
@@ -414,6 +415,7 @@ const RECORD_DATA = [
   { name: "플레임", gameTime: "13분 11.19초", tosTime: "12시간 18분 3초" },
   { name: "자두뇨끼", gameTime: "22분 10.84초", tosTime: "11시간 33분 12초" },
   { name: "녹두로", gameTime: "16분 57.38초", tosTime: "3시간 38분 59초" },
+  { name: "허니츄", gameTime: "30시간 15분 10.04초", tosTime: "1시간 7분 3초" },
 ];
 
 const RETRY_DATA = [
