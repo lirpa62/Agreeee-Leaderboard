@@ -489,12 +489,27 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
   }
 });
 
-/** 미발행 목록 조회 */
-app.get("/api/admin/unpublished", requireAdmin, (req, res) => {
+/**
+ * 미발행 목록 조회.
+ *
+ * DB 기록만 믿으면 실제와 어긋날 수 있습니다.
+ * (수동 커밋, 이전 버전의 건별 커밋 등으로 이미 반영된 경우)
+ * 그래서 data.js 에 실제 변경이 있는지 함께 확인해 알려줍니다.
+ */
+app.get("/api/admin/unpublished", requireAdmin, async (req, res) => {
+  const rows = db.listUnpublished();
+  let dirty = null;
+  try {
+    dirty = await git.hasPendingChanges();
+  } catch {
+    dirty = null; // git 확인 실패 시 판단 보류
+  }
   res.json({
     ok: true,
-    rows: db.listUnpublished(),
+    rows,
     autoPush: git.AUTO_PUSH,
+    // false 면 DB 에는 미발행으로 남아 있지만 파일은 이미 커밋된 상태입니다.
+    hasFileChanges: dirty,
   });
 });
 

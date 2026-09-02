@@ -150,9 +150,16 @@ async function publishBatch(items) {
   return { published: true, sha, pushed, count: items.length };
 }
 
+/** data.js 에 커밋되지 않은 변경이 있는지 */
+async function hasPendingChanges() {
+  const status = await run(["status", "--porcelain", "--", "data.js"]);
+  return Boolean(status);
+}
+
 module.exports = {
   commitDataFile,
   publishBatch,
+  hasPendingChanges,
   REPO_DIR,
   AUTO_COMMIT,
   AUTO_PUSH,

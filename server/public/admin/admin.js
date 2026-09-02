@@ -175,11 +175,29 @@ async function loadUnpublished() {
       return;
     }
 
-    document.getElementById("publishCount").textContent =
-      `${json.rows.length}건`;
-    document.getElementById("publishHint").textContent = json.autoPush
-      ? "발행하면 커밋 후 자동으로 푸시됩니다."
-      : "GIT_AUTO_PUSH 가 꺼져 있어 커밋만 됩니다. 서버에서 직접 push 해주세요.";
+    const bar2 = bar;
+    const btn = document.getElementById("publishBtn");
+
+    // data.js 에 실제 변경이 없다면 이미 반영된 것입니다.
+    // (수동 커밋 등) 이 경우 '발행'이 아니라 '정리'로 안내합니다.
+    const stale = json.hasFileChanges === false;
+    bar2.classList.toggle("stale", stale);
+
+    if (stale) {
+      document.getElementById("publishCount").textContent =
+        `${json.rows.length}건`;
+      document.getElementById("publishHint").textContent =
+        "다만 data.js 에는 변경 사항이 없습니다. 이미 커밋되었을 가능성이 큽니다 — " +
+        "'발행 완료로 정리'를 누르면 목록만 정리되고 배포는 실행되지 않습니다.";
+      btn.textContent = "✔ 발행 완료로 정리";
+    } else {
+      document.getElementById("publishCount").textContent =
+        `${json.rows.length}건`;
+      document.getElementById("publishHint").textContent = json.autoPush
+        ? "발행하면 커밋 후 자동으로 푸시됩니다."
+        : "GIT_AUTO_PUSH 가 꺼져 있어 커밋만 됩니다. 서버에서 직접 push 해주세요.";
+      btn.textContent = "🚀 발행하기";
+    }
 
     list.innerHTML = json.rows
       .map(
@@ -203,13 +221,14 @@ async function loadUnpublished() {
 document.getElementById("publishBtn").addEventListener("click", async () => {
   const btn = document.getElementById("publishBtn");
   const n = document.getElementById("publishCount").textContent;
-  if (
-    !confirm(
-      `${n}을 하나의 커밋으로 발행합니다.\n\n` +
-        `Netlify 배포가 1회 실행됩니다. 계속할까요?`,
-    )
-  )
-    return;
+  const stale = document.getElementById("publishBar").classList.contains("stale");
+
+  const msg = stale
+    ? `data.js 에 변경 사항이 없어 배포는 실행되지 않습니다.\n\n` +
+      `${n}을 발행 완료로 정리할까요?`
+    : `${n}을 하나의 커밋으로 발행합니다.\n\n` +
+      `Netlify 배포가 1회 실행됩니다. 계속할까요?`;
+  if (!confirm(msg)) return;
 
   btn.disabled = true;
   btn.textContent = "발행 중…";
@@ -238,7 +257,7 @@ loadUnpublished();
     alert(`발행 중 오류: ${e.message}`);
   } finally {
     btn.disabled = false;
-    btn.textContent = "🚀 발행하기";
+    // 버튼 문구는 loadUnpublished() 가 상태에 맞게 다시 설정합니다.
   }
 });
 

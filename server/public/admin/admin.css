@@ -236,6 +236,21 @@ body.login-page {
   display: none;
 }
 
+/* DB 에는 미발행이지만 data.js 에는 변경이 없는 상태
+   (이미 커밋됨) — 배포가 필요 없으므로 톤을 낮춥니다. */
+.publish-bar.stale {
+  background: #eef2f8;
+  border-color: #7697e7;
+}
+
+.publish-bar.stale .publish-info {
+  color: #2a4a7a;
+}
+
+.publish-bar.stale .publish-hint {
+  color: #4a6a9a;
+}
+
 .publish-info {
   flex: 1;
   font-size: 12.5px;
