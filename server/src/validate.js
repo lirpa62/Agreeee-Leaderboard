@@ -6,10 +6,18 @@
  * 경계 근처는 관리자 확인으로 넘깁니다.
  */
 
-const { formatParts, validateParts } = require("./time");
+const { formatParts, validateParts, parseTime } = require("./time");
 
 // 리그별 팔로워 기준
 const THRESHOLDS = { record: 10000, speedrun: 3000 };
+
+/**
+ * 클리어 회차 시간 이상값 기준.
+ * 기존 기록 205건의 최대값이 33분인 반면 약관 시간은 중앙값이 4시간을 넘습니다.
+ * 회차 시간에 1시간 이상이 들어오면 두 값을 바꿔 입력했을 가능성이 큽니다.
+ */
+const GAME_TIME_MAX_MIN = 33;
+const GAME_TIME_WARN_MIN = 60;
 
 // 기준 ±20% 는 '경계 근처'로 보고 자동 판정하지 않습니다.
 const MARGIN_RATIO = 0.2;
@@ -168,10 +176,26 @@ function judgeFollowers(kind, followerCount, verifyStatus) {
   };
 }
 
+/**
+ * 회차 시간이 비정상적으로 긴지 확인합니다.
+ * 제출을 막지는 않고 관리자에게 표시할 문구만 돌려줍니다.
+ */
+function checkGameTimeOutlier(gameTimeStr) {
+  const mins = parseTime(gameTimeStr);
+  if (mins >= GAME_TIME_WARN_MIN) {
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return `⚠️ 회차 시간이 ${h}시간 ${m}분으로 비정상적으로 깁니다 (기존 최대 ${GAME_TIME_MAX_MIN}분) — 약관 시간과 바뀌었을 수 있습니다`;
+  }
+  return null;
+}
+
 module.exports = {
   validateSubmission,
   judgeFollowers,
   compareNames,
+  checkGameTimeOutlier,
   THRESHOLDS,
+  GAME_TIME_MAX_MIN,
   isHttpUrl,
 };

@@ -403,11 +403,14 @@ h2 {
   color: #888;
   margin-top: 2px;
   letter-spacing: -0.5px;
-  /* '막트 전체: ... / 약관: ...' 도 어색하게 끊기지 않게 한 줄로 두고,
-     칸이 모자라면 말줄임으로 처리합니다. */
+}
+
+/* '막트 전체: ...' 와 '/ 약관: ...' 을 각각 통째로 유지해,
+   줄바꿈이 필요하면 반드시 '/ 약관:' 앞에서만 끊기도록 합니다.
+   (숫자 중간에서 끊기면 읽기 어렵습니다) */
+.rank-detail .detail-part {
+  display: inline-block;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 .bottom-section {

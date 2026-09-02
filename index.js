@@ -1163,7 +1163,7 @@ function renderRanking() {
                     <span class="rank-badge ${badgeClass}">${badgeContent}</span>
                     <div class="rank-info">
                         <span class="rank-name" style="color:${data.color}">${data.name}</span>
-                        <span class="rank-detail">막트 전체: ${formatTime(data.y, false)} / 약관: ${formatTime(data.x, false)}</span>
+                        <span class="rank-detail"><span class="detail-part">막트 전체: ${formatTime(data.y, false)}</span> <span class="detail-part">/ 약관: ${formatTime(data.x, false)}</span></span>
                     </div>
                 </div>
                 <span class="rank-time" style="font-weight:bold;">${formatTime(data.totalMin, false)}</span>

@@ -178,6 +178,51 @@ function numOr0(id) {
   return Number.isFinite(v) ? v : 0;
 }
 
+/* ---------------------------------------------------------
+   클리어 회차 시간 이상값 경고
+   기존 기록 205건의 클리어 회차 시간은 최대 33분입니다.
+   반면 약관 시간은 중앙값이 4시간이 넘습니다.
+   즉 회차 시간에 1시간 이상이 들어오면 두 값을 바꿔 넣었을
+   가능성이 높으므로, 제출을 막지 않고 확인만 요청합니다.
+   --------------------------------------------------------- */
+const GAME_TIME_MAX_MIN = 33; // 현재 등록된 최대값
+const GAME_TIME_WARN_MIN = 60; // 이 값을 넘으면 경고
+
+function gameTimeMinutes() {
+  return numOr0("gameH") * 60 + numOr0("gameM") + numOr0("gameS") / 60;
+}
+
+function checkGameTime() {
+  const box = $("gameTimeWarn");
+  const mins = gameTimeMinutes();
+
+  if (mins >= GAME_TIME_WARN_MIN) {
+    box.hidden = false;
+    box.innerHTML =
+      `⚠️ <strong>입력하신 값이 맞는지 확인해 주세요.</strong><br />` +
+      `클리어한 회차 시간이 <strong>${Math.floor(mins / 60)}시간 ${Math.round(mins % 60)}분</strong>으로 입력되었습니다. ` +
+      `현재 등록된 기록 중 가장 긴 회차 시간은 <strong>${GAME_TIME_MAX_MIN}분</strong>입니다.<br />` +
+      `혹시 <strong>'이용약관과 마주한 시간'</strong>을 잘못 입력하신 것은 아닌지 확인해 주세요.`;
+    return "warn";
+  }
+
+  if (mins > GAME_TIME_MAX_MIN) {
+    box.hidden = false;
+    box.innerHTML =
+      `ℹ️ 현재 등록된 최고 기록(${GAME_TIME_MAX_MIN}분)보다 긴 시간입니다. ` +
+      `값이 맞다면 그대로 제출하셔도 됩니다.`;
+    return "notice";
+  }
+
+  box.hidden = true;
+  box.innerHTML = "";
+  return "ok";
+}
+
+["gameH", "gameM", "gameS"].forEach((id) =>
+  $(id).addEventListener("input", checkGameTime),
+);
+
 function showErrors(list) {
   const box = $("errors");
   if (!list || !list.length) {
@@ -197,6 +242,21 @@ $("submitForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = $("submitBtn");
   const kind = document.querySelector('input[name="kind"]:checked').value;
+
+  // 회차 시간이 비정상적으로 길면 한 번 더 확인받습니다. (막지는 않습니다)
+  if (checkGameTime() === "warn") {
+    const m = gameTimeMinutes();
+    const ok = confirm(
+      `클리어한 회차 시간이 ${Math.floor(m / 60)}시간 ${Math.round(m % 60)}분으로 입력되었습니다.\n\n` +
+        `현재 등록된 기록 중 가장 긴 회차 시간은 ${GAME_TIME_MAX_MIN}분입니다.\n` +
+        `'이용약관과 마주한 시간'을 잘못 입력하신 것은 아닌가요?\n\n` +
+        `이대로 제출하시겠습니까?`,
+    );
+    if (!ok) {
+      $("gameH").focus();
+      return;
+    }
+  }
 
   // 캡차가 켜져 있는데 아직 인증하지 않았으면 서버에 보내기 전에 안내
   if (captchaEnabled && !getCaptchaToken()) {

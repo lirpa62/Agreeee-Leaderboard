@@ -203,6 +203,50 @@ body {
   color: #444;
 }
 
+/* 입력 예시 이미지 */
+.example {
+  margin: 8px 0 0;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--xp-shadow);
+}
+
+.example img {
+  display: block;
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+  border: 1px solid #ddd;
+}
+
+.example figcaption {
+  margin-top: 6px;
+  font-size: 11px;
+  color: #555;
+}
+
+.example code {
+  font-family: "Consolas", "Menlo", monospace;
+  background: var(--xp-face-alt);
+  border: 1px solid #ddd;
+  padding: 1px 5px;
+}
+
+/* 값 확인 경고 */
+.warn-box {
+  margin: 8px 0 0;
+  padding: 9px 11px;
+  font-size: 12px;
+  line-height: 1.65;
+  background: #fdf6d8;
+  border: 1px solid #e0a900;
+  color: #6b4d00;
+}
+
+.warn-box[hidden] {
+  display: none;
+}
+
 /* 색상 */
 .color-row {
   display: flex;

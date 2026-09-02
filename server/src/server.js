@@ -13,7 +13,12 @@ const express = require("express");
 
 const db = require("./db");
 const chzzk = require("./chzzk");
-const { validateSubmission, judgeFollowers, compareNames } = require("./validate");
+const {
+  validateSubmission,
+  judgeFollowers,
+  compareNames,
+  checkGameTimeOutlier,
+} = require("./validate");
 const dataFile = require("./dataFile");
 const git = require("./git");
 const captcha = require("./captcha");
@@ -248,6 +253,12 @@ app.post(
 
     // 입력한 이름과 조회된 채널명이 다르면 검증 메모에 남깁니다.
     // (차단하지 않습니다 — '니니아*' 처럼 표기가 다른 경우가 정상입니다)
+    // 회차 시간이 비정상적으로 길면 (약관 시간과 혼동했을 가능성) 메모에 남깁니다.
+    const outlier = checkGameTimeOutlier(v.gameTime);
+    if (outlier) {
+      verifyNote = [verifyNote, outlier].filter(Boolean).join(" / ");
+    }
+
     const nameCheck = compareNames(v.streamerName, channel?.channelName);
     if (nameCheck.match === "different") {
       verifyNote = [
