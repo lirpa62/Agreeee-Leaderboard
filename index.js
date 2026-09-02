@@ -42,6 +42,8 @@
     // 테마 변경으로 캔버스 크기가 달라질 수 있어 차트를 다시 맞춤
     if (typeof myChart !== "undefined") {
       myChart.resize();
+      // 구버전/신버전에 따라 이름표·축 제한·드래그 적용을 다시 반영
+      if (typeof applyXZoom === "function") applyXZoom();
     }
     checkScroll();
     // XP 모드의 활성 창 표시 갱신
@@ -413,6 +415,12 @@ const LABEL_RANK_LIMIT = 15;
 const X_ZOOM_LIMIT = 360; // 6시간
 let isXZoomed = true; // 기본: 확대 보기
 
+// 차트 개선(이름표 축약/확대/드래그)은 신버전(XP)에서만 적용하고,
+// 구버전은 기존 차트 동작을 그대로 유지합니다.
+function isXpUi() {
+  return document.body.dataset.ui === "xp";
+}
+
 // totalMin 오름차순 정렬 순서가 곧 순위이므로 labelRank로 저장
 function assignLabelRank(list) {
   list.forEach((d, i) => {
@@ -457,10 +465,12 @@ const myChart = new Chart(ctx, {
     maintainAspectRatio: false,
     layout: { padding: 3 },
     onHover: (event, elements) => {
-      // 마우스가 점 위에 있을 때 커서를 pointer로, 아니면 default로 변경
+      // 점 위: pointer / 드래그 가능한 확대 보기: grab / 그 외: default
       event.native.target.style.cursor = elements.length
         ? "pointer"
-        : "default";
+        : isXpUi() && isXZoomed
+          ? "grab"
+          : "default";
 
       if (elements && elements.length > 0) {
         const newIndex = elements[0].index;
@@ -477,6 +487,8 @@ const myChart = new Chart(ctx, {
     },
     // 차트 점 클릭 시 리스트로 이동
     onClick: (e, elements) => {
+      // 드래그로 화면을 옮긴 직후의 클릭은 무시
+      if (window.chartJustPanned) return;
       if (elements.length > 0) {
         const index = elements[0].index;
         const listContainer = document.getElementById("rankList");
@@ -695,6 +707,8 @@ const myChart = new Chart(ctx, {
         // 113개 이름을 항상 띄우면 화면이 글자로 가득 차므로
         // 상위권 + 호버/검색 대상만 표시합니다. (LABEL_RANK_LIMIT)
         display: function (context) {
+          // 구버전은 기존처럼 모든 이름표를 표시
+          if (!isXpUi()) return true;
           if (context.dataIndex === activePoint) return true;
           const d = context.dataset.data[context.dataIndex];
           return d && d.labelRank !== undefined && d.labelRank < LABEL_RANK_LIMIT;
@@ -720,28 +734,213 @@ const myChart = new Chart(ctx, {
 /* ---------------------------------------------------------
    X축 확대/전체 보기 전환
    --------------------------------------------------------- */
+// 확대 보기에서 드래그로 이동한 현재 뷰포트 (null이면 기본 위치)
+let panView = null;
+
+// 데이터 전체 범위 (드래그 한계 계산용)
+function getDataBounds() {
+  const data = myChart.data.datasets[0].data;
+  if (!data.length) return { xMin: 0, xMax: 60, yMin: 0, yMax: 30 };
+  const xs = data.map((d) => d.x);
+  const ys = data.map((d) => d.y);
+  return {
+    xMin: Math.min(...xs),
+    xMax: Math.max(...xs),
+    yMin: Math.min(...ys),
+    yMax: Math.max(...ys),
+  };
+}
+
 function applyXZoom() {
   const btn = document.getElementById("xZoomBtn");
   const hint = document.getElementById("xZoomHint");
+  const controls = document.querySelector(".chart-controls");
+  const scales = myChart.options.scales;
 
-  myChart.options.scales.x.max = isXZoomed ? X_ZOOM_LIMIT : undefined;
-  myChart.update();
+  // 구버전: 기존 차트 그대로 (축 제한/드래그 없음)
+  if (!isXpUi()) {
+    controls.style.display = "none";
+    scales.x.min = undefined;
+    scales.x.max = undefined;
+    scales.y.min = undefined;
+    scales.y.max = undefined;
+    myChart.update();
+    return;
+  }
+
+  controls.style.display = "";
 
   if (isXZoomed) {
-    // 확대 보기에서 잘려 보이지 않는 기록 수를 안내
+    if (panView) {
+      // 드래그로 이동한 위치 유지
+      scales.x.min = panView.xMin;
+      scales.x.max = panView.xMax;
+      scales.y.min = panView.yMin;
+      scales.y.max = panView.yMax;
+    } else {
+      scales.x.min = 0;
+      scales.x.max = X_ZOOM_LIMIT;
+      scales.y.min = undefined;
+      scales.y.max = undefined;
+    }
+    myChart.update();
+
+    // 현재 보이는 영역 밖의 기록 수를 안내
+    const xa = myChart.scales.x;
+    const ya = myChart.scales.y;
     const hidden = myChart.data.datasets[0].data.filter(
-      (d) => d.x > X_ZOOM_LIMIT,
+      (d) => d.x < xa.min || d.x > xa.max || d.y < ya.min || d.y > ya.max,
     ).length;
     btn.textContent = "🔍 전체 보기 (18시간까지)";
-    hint.textContent = hidden > 0 ? `6시간 초과 ${hidden}명 숨김` : "";
+    hint.textContent =
+      hidden > 0 ? `화면 밖 ${hidden}명 · 드래그로 이동` : "드래그로 이동";
   } else {
+    panView = null;
+    scales.x.min = undefined;
+    scales.x.max = undefined;
+    scales.y.min = undefined;
+    scales.y.max = undefined;
+    myChart.update();
     btn.textContent = "🔍 확대 보기 (6시간까지)";
     hint.textContent = "";
   }
 }
 
+/* ---------------------------------------------------------
+   확대 보기에서 차트 드래그(패닝)
+   - 신버전 + 확대 보기일 때만 동작
+   - 데이터 범위 밖으로 너무 벗어나지 않도록 여유분만 허용
+   --------------------------------------------------------- */
+(function initChartPan() {
+  const canvas = document.getElementById("clearChart");
+  let dragging = false;
+  let moved = false;
+  let startX = 0;
+  let startY = 0;
+  let startView = null;
+  // 더블클릭 초기화 직후의 잔여 mousedown/up 을 무시하기 위한 플래그
+  let justReset = false;
+
+  function canPan() {
+    return isXpUi() && isXZoomed;
+  }
+
+  function currentView() {
+    return {
+      xMin: myChart.scales.x.min,
+      xMax: myChart.scales.x.max,
+      yMin: myChart.scales.y.min,
+      yMax: myChart.scales.y.max,
+    };
+  }
+
+  canvas.addEventListener("mousedown", function (e) {
+    if (!canPan()) return;
+    if (justReset) {
+      justReset = false;
+      return;
+    }
+    dragging = true;
+    moved = false;
+    startX = e.clientX;
+    startY = e.clientY;
+    startView = currentView();
+  });
+
+  window.addEventListener("mousemove", function (e) {
+    if (!dragging || !startView) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const dxPx = e.clientX - startX;
+    const dyPx = e.clientY - startY;
+
+    if (!moved && Math.abs(dxPx) + Math.abs(dyPx) < 3) return;
+    moved = true;
+    canvas.style.cursor = "grabbing";
+
+    // 픽셀 이동량을 데이터 단위로 환산
+    const xSpan = startView.xMax - startView.xMin;
+    const ySpan = startView.yMax - startView.yMin;
+    const xPerPx = xSpan / (myChart.chartArea.right - myChart.chartArea.left);
+    const yPerPx = ySpan / (myChart.chartArea.bottom - myChart.chartArea.top);
+
+    let nxMin = startView.xMin - dxPx * xPerPx;
+    let nxMax = startView.xMax - dxPx * xPerPx;
+    // Y축은 위로 갈수록 값이 커지므로 부호가 반대
+    let nyMin = startView.yMin + dyPx * yPerPx;
+    let nyMax = startView.yMax + dyPx * yPerPx;
+
+    // 데이터 범위에서 한 화면 이상 벗어나지 않도록 제한
+    const b = getDataBounds();
+    const xPad = xSpan * 0.5;
+    const yPad = ySpan * 0.5;
+
+    if (nxMin < b.xMin - xPad) {
+      nxMax += b.xMin - xPad - nxMin;
+      nxMin = b.xMin - xPad;
+    }
+    if (nxMax > b.xMax + xPad) {
+      nxMin -= nxMax - (b.xMax + xPad);
+      nxMax = b.xMax + xPad;
+    }
+    if (nyMin < b.yMin - yPad) {
+      nyMax += b.yMin - yPad - nyMin;
+      nyMin = b.yMin - yPad;
+    }
+    if (nyMax > b.yMax + yPad) {
+      nyMin -= nyMax - (b.yMax + yPad);
+      nyMax = b.yMax + yPad;
+    }
+
+    panView = { xMin: nxMin, xMax: nxMax, yMin: nyMin, yMax: nyMax };
+
+    const scales = myChart.options.scales;
+    scales.x.min = nxMin;
+    scales.x.max = nxMax;
+    scales.y.min = nyMin;
+    scales.y.max = nyMax;
+    myChart.update("none");
+
+    e.preventDefault();
+  });
+
+  window.addEventListener("mouseup", function () {
+    if (!dragging) return;
+    dragging = false;
+    startView = null;
+    canvas.style.cursor = "";
+    if (moved) {
+      // 드래그 직후 발생하는 click 이 점 선택으로 이어지지 않도록 차단
+      window.chartJustPanned = true;
+      setTimeout(() => {
+        window.chartJustPanned = false;
+      }, 0);
+      // 드래그로 화면이 바뀌었으면 안내 문구를 갱신
+      applyXZoom();
+    }
+  });
+
+  // (커서 모양은 차트의 onHover 에서 함께 관리합니다)
+
+  // 확대 보기 기본 위치로 되돌리기 (더블클릭)
+  // Chart.js 가 캔버스 이벤트를 가로채므로 래퍼에서 캡처 단계로 받습니다.
+  const canvasWrap = canvas.closest(".chart-canvas-wrap") || canvas;
+  canvasWrap.addEventListener("dblclick", function () {
+    if (!canPan()) return;
+    // 더블클릭 중 발생한 mousedown/up 이 방금 되돌린 위치를
+    // 다시 덮어쓰지 않도록 드래그 상태를 완전히 정리합니다.
+    dragging = false;
+    moved = false;
+    startView = null;
+    justReset = true;
+    panView = null;
+    applyXZoom();
+  });
+})();
+
 document.getElementById("xZoomBtn").addEventListener("click", function () {
   isXZoomed = !isXZoomed;
+  panView = null;
   applyXZoom();
 });
 
