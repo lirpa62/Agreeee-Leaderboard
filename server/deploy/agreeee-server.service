@@ -1,0 +1,30 @@
+[Unit]
+Description=Agreeee Leaderboard 기록 제출·검토 서버
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/agreeee_leaderboard/server
+EnvironmentFile=/home/ubuntu/agreeee_leaderboard/server/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/node src/server.js
+
+Restart=always
+RestartSec=5
+
+# 로그는 journald 로
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=agreeee-server
+
+# 기본적인 보안 격리
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+# data.js 를 커밋해야 하므로 저장소 전체에 쓰기가 필요합니다.
+ReadWritePaths=/home/ubuntu/agreeee_leaderboard
+
+[Install]
+WantedBy=multi-user.target

@@ -1,10 +1,19 @@
 /* 기록 등록 요청 폼 */
 
-// 제출 서버 주소. 배포 시 OCI 서버 주소로 바꾸세요.
-const API_BASE =
-  location.hostname === "localhost" || location.hostname === "127.0.0.1"
-    ? "http://localhost:3111"
-    : "https://api.agreeee-leaderboard.example"; // TODO: 실제 서버 주소
+/**
+ * 제출 서버 주소.
+ * 배포 시에는 이 파일을 고치지 말고 submit.html 의
+ *   <meta name="api-base" content="https://api.example.com" />
+ * 만 바꾸면 됩니다. (없으면 로컬 개발 주소를 씁니다)
+ */
+const API_BASE = (() => {
+  const meta = document
+    .querySelector('meta[name="api-base"]')
+    ?.getAttribute("content")
+    ?.trim();
+  if (meta && !meta.startsWith("{{")) return meta.replace(/\/$/, "");
+  return "http://localhost:3111";
+})();
 
 const $ = (id) => document.getElementById(id);
 
