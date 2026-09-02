@@ -44,6 +44,10 @@
       myChart.resize();
     }
     checkScroll();
+    // XP 모드의 활성 창 표시 갱신
+    if (typeof window.updateActiveWindow === "function") {
+      window.updateActiveWindow();
+    }
   });
 })();
 
@@ -73,9 +77,12 @@
     taskBtn.classList.remove("active");
   });
 
+  // 작업 표시줄의 메인 버튼 : 최소화 상태면 복원, 아니면 맨 위로 이동
   taskBtn.addEventListener("click", function () {
-    container.classList.toggle("minimized");
-    taskBtn.classList.toggle("active", !container.classList.contains("minimized"));
+    if (container.classList.contains("minimized")) {
+      container.classList.remove("minimized");
+    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   });
 
   // 닫기 / 동의하지 않음 : 게임처럼 거부당하는 연출
@@ -107,6 +114,122 @@
       "시작 메뉴는 이용약관 제 12 조에 동의한 이후에 사용할 수 있습니다.\n\n(아직 제 4 조입니다)",
     );
   });
+
+  /* -------------------------------------------------------
+     섹션 = 창 연출
+     - 각 섹션 타이틀바의 _ □ X : 접기 / 최대화 / 닫기
+     - 작업 표시줄 버튼 : 해당 섹션으로 이동 + 닫힌 창 복원
+     - 스크롤 위치에 따라 활성 창(진한 파랑) 표시
+     ------------------------------------------------------- */
+  const sections = [
+    { id: "sectionMain", el: null, task: null },
+    { id: "sectionSpeedrun", el: null, task: null },
+    { id: "sectionShortcut", el: null, task: null },
+    { id: "sectionRetry", el: null, task: null },
+  ];
+
+  const taskButtons = Array.prototype.slice.call(
+    document.querySelectorAll(".xp-task[data-target]"),
+  );
+
+  sections.forEach((s) => {
+    s.el = document.getElementById(s.id);
+    s.task = taskButtons.find((b) => b.dataset.target === s.id) || null;
+  });
+
+  // '창'으로 취급할 섹션들 (메인 차트 영역은 컨테이너 자체가 창이므로 제외)
+  const windowSections = Array.prototype.slice.call(
+    document.querySelectorAll(".bottom-section, .casual-mode"),
+  );
+
+  windowSections.forEach(function (section) {
+    const title = section.querySelector(".section-title");
+    if (!title) return;
+
+    const minBtn = title.querySelector(".sec-min");
+    const maxBtn = title.querySelector(".sec-max");
+    const closeBtn = title.querySelector(".sec-close");
+
+    // 타이틀바(버튼 외 영역) 클릭 시 접기/펼치기
+    title.addEventListener("click", function (e) {
+      if (e.target.closest(".xp-btn")) return;
+      if (e.target.closest("a, button, label, input")) return;
+      section.classList.toggle("collapsed");
+    });
+
+    if (minBtn) {
+      minBtn.addEventListener("click", function () {
+        section.classList.remove("maximized");
+        section.classList.toggle("collapsed");
+      });
+    }
+
+    if (maxBtn) {
+      maxBtn.addEventListener("click", function () {
+        section.classList.remove("collapsed");
+        section.classList.toggle("maximized");
+        // 최대화 시 차트가 있는 경우 크기 재계산
+        if (typeof myChart !== "undefined") myChart.resize();
+      });
+    }
+
+    if (closeBtn) {
+      closeBtn.addEventListener("click", function () {
+        section.classList.remove("maximized");
+        section.classList.add("closed");
+        updateTaskbarState();
+      });
+    }
+  });
+
+  // 작업 표시줄 버튼 : 이동 + 닫힌 창 복원
+  taskButtons.forEach(function (btn) {
+    if (btn.id === "xpTaskWindow") return; // 메인 창은 최소화 토글이 이미 걸려 있음
+    btn.addEventListener("click", function () {
+      const target = document.getElementById(btn.dataset.target);
+      if (!target) return;
+      target.classList.remove("closed", "collapsed");
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
+  function updateTaskbarState() {
+    sections.forEach(function (s) {
+      if (!s.task || !s.el) return;
+      // 닫힌 창은 작업 표시줄에서 눌린 상태를 해제
+      if (s.el.classList.contains("closed")) {
+        s.task.classList.remove("active");
+      }
+    });
+  }
+
+  // 스크롤 위치에 따라 활성 창 갱신
+  function updateActiveWindow() {
+    if (document.body.dataset.ui !== "xp") return;
+
+    let activeId = sections[0].id;
+    const probe = window.innerHeight * 0.35;
+
+    sections.forEach(function (s) {
+      if (!s.el || s.el.classList.contains("closed")) return;
+      const rect = s.el.getBoundingClientRect();
+      if (rect.top <= probe) activeId = s.id;
+    });
+
+    sections.forEach(function (s) {
+      if (!s.el) return;
+      const isActive = s.id === activeId && !s.el.classList.contains("closed");
+      // 메인은 .content-wrapper 라 타이틀바가 없으므로 클래스만 관리
+      s.el.classList.toggle("active-window", isActive);
+      if (s.task) s.task.classList.toggle("active", isActive);
+    });
+  }
+
+  window.addEventListener("scroll", updateActiveWindow, { passive: true });
+  updateActiveWindow();
+
+  // 다른 스코프(테마 전환 등)에서도 호출할 수 있도록 노출
+  window.updateActiveWindow = updateActiveWindow;
 })();
 
 // FOUT 문제 해결 : 폰트 로딩 감지 및 화면 표시

@@ -509,10 +509,28 @@ body[data-ui="xp"] .bottom-section:has(.retry-list) {
   margin-bottom: 16px;
 }
 
-/* 섹션 헤더를 작은 타이틀바처럼 */
+/* 섹션 헤더를 작은 타이틀바처럼.
+   기본은 '비활성 창'(회색빛 파랑)이고, 화면에 보이는 섹션만
+   활성 창(진한 파랑)이 됩니다. — XP의 실제 동작을 따름 */
 body[data-ui="xp"] .section-title {
   font-size: 0.85rem;
   color: #fff;
+  background: linear-gradient(
+    180deg,
+    var(--xp-title-inactive-2) 0%,
+    var(--xp-title-inactive-1) 45%,
+    #6d8fe0 100%
+  );
+  text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.35);
+  margin: 0 0 12px;
+  padding: 6px 6px 6px 10px;
+  gap: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+body[data-ui="xp"] .bottom-section.active-window > .section-title,
+body[data-ui="xp"] .casual-mode.active-window > .section-title {
   background: linear-gradient(
     180deg,
     var(--xp-title-2) 0%,
@@ -520,9 +538,55 @@ body[data-ui="xp"] .section-title {
     var(--xp-title-3) 100%
   );
   text-shadow: 1px 1px 1px rgba(0, 0, 0, 0.5);
-  margin: 0 0 12px;
-  padding: 6px 10px;
-  gap: 12px;
+}
+
+/* 섹션 타이틀바의 창 버튼은 우측 끝에 가로로 */
+body[data-ui="xp"] .section-title .xp-btns {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+body[data-ui="xp"] .section-title .xp-btn {
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
+}
+
+/* 접기(최소화) : 타이틀바만 남기고 본문 숨김 */
+body[data-ui="xp"] .bottom-section.collapsed > *:not(.section-title),
+body[data-ui="xp"] .casual-mode.collapsed > *:not(.section-title) {
+  display: none;
+}
+
+body[data-ui="xp"] .bottom-section.collapsed > .section-title,
+body[data-ui="xp"] .casual-mode.collapsed > .section-title {
+  margin-bottom: 0;
+}
+
+/* 최대화 : 해당 섹션만 화면 가득 */
+body[data-ui="xp"] .bottom-section.maximized,
+body[data-ui="xp"] .casual-mode.maximized {
+  position: fixed;
+  inset: 0 0 32px 0;
+  z-index: 9998;
+  margin: 0;
+  overflow-y: auto;
+  background: var(--xp-face);
+}
+
+/* 닫기 : 작업 표시줄에서 다시 열 수 있음 */
+body[data-ui="xp"] .bottom-section.closed,
+body[data-ui="xp"] .casual-mode.closed {
+  display: none;
+}
+
+/* XP 모드에서는 작업 표시줄이 네비게이션을 대신하므로
+   기존 스크롤 유도 화살표를 숨깁니다. */
+body[data-ui="xp"] .scroll-indicator {
+  display: none;
 }
 
 body[data-ui="xp"] .section-title .request-btn {
