@@ -158,6 +158,90 @@ function flash(card, cls, text) {
   card.querySelector(".card-body").before(div);
 }
 
+/* ---------------------------------------------------------
+   발행 (미발행 건들을 한 커밋으로 묶어 푸시)
+   Netlify 는 배포 1회당 크레딧을 쓰므로, 승인마다 푸시하지 않고 모읍니다.
+   --------------------------------------------------------- */
+async function loadUnpublished() {
+  const bar = document.getElementById("publishBar");
+  const list = document.getElementById("publishList");
+  try {
+    const res = await fetch("/api/admin/unpublished");
+    if (!res.ok) return;
+    const json = await res.json();
+    if (!json.ok || !json.rows.length) {
+      bar.hidden = true;
+      list.hidden = true;
+      return;
+    }
+
+    document.getElementById("publishCount").textContent =
+      `${json.rows.length}건`;
+    document.getElementById("publishHint").textContent = json.autoPush
+      ? "발행하면 커밋 후 자동으로 푸시됩니다."
+      : "GIT_AUTO_PUSH 가 꺼져 있어 커밋만 됩니다. 서버에서 직접 push 해주세요.";
+
+    list.innerHTML = json.rows
+      .map(
+        (r) =>
+          `<li class="publish-item ${r.revert_reason ? "remove" : "add"}">
+             <span class="publish-op">${r.revert_reason ? "삭제" : "추가"}</span>
+             <span class="publish-name">${esc(r.streamer_name)}</span>
+             <span class="publish-time">${esc(r.game_time)}</span>
+             <span class="publish-id">#${r.id}</span>
+           </li>`,
+      )
+      .join("");
+
+    bar.hidden = false;
+    list.hidden = false;
+  } catch {
+    /* 서버 오류 시 발행 UI 만 숨깁니다 */
+  }
+}
+
+document.getElementById("publishBtn").addEventListener("click", async () => {
+  const btn = document.getElementById("publishBtn");
+  const n = document.getElementById("publishCount").textContent;
+  if (
+    !confirm(
+      `${n}을 하나의 커밋으로 발행합니다.\n\n` +
+        `Netlify 배포가 1회 실행됩니다. 계속할까요?`,
+    )
+  )
+    return;
+
+  btn.disabled = true;
+  btn.textContent = "발행 중…";
+  try {
+    const res = await fetch("/api/admin/publish", { method: "POST" });
+    const json = await res.json();
+    if (!json.ok) {
+      alert(`발행 실패: ${json.error}`);
+      return;
+    }
+    if (json.cleaned) {
+      alert(`${json.message}\n\n${json.count}건을 발행 완료로 정리했습니다.`);
+    } else {
+      alert(
+        `발행했습니다. (${json.count}건)\n` +
+          `커밋 ${json.sha}` +
+          (json.pushed
+            ? " · 푸시 완료 — Netlify 배포가 시작됩니다."
+            : " · 푸시 안 함 — 서버에서 git push 해주세요."),
+      );
+    }
+    await loadUnpublished();
+    await load();
+loadUnpublished();
+  } catch (e) {
+    alert(`발행 중 오류: ${e.message}`);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "🚀 발행하기";
+  }
+});
+
 async function load() {
   const res = await fetch(`/api/admin/submissions?status=${currentStatus}`);
   if (res.status === 401) {
@@ -175,6 +259,9 @@ async function load() {
   emptyEl.hidden = json.rows.length > 0;
 }
 
+// 목록을 새로 불러올 때 발행 대기 현황도 함께 갱신
+document.getElementById("refreshBtn").addEventListener("click", loadUnpublished);
+
 // 탭 전환
 document.getElementById("tabs").addEventListener("click", (e) => {
   const tab = e.target.closest(".tab");
@@ -184,6 +271,7 @@ document.getElementById("tabs").addEventListener("click", (e) => {
     .forEach((t) => t.classList.toggle("active", t === tab));
   currentStatus = tab.dataset.status;
   load();
+loadUnpublished();
 });
 
 document.getElementById("refreshBtn").addEventListener("click", load);
@@ -273,27 +361,31 @@ listEl.addEventListener("click", async (e) => {
       return;
     }
 
-    const gitMsgOf = (g = {}) =>
-      g.committed
-        ? ` · 커밋 ${g.sha}${g.pushed ? " (푸시됨)" : ""}`
-        : ` · ${g.reason || "커밋 안 함"}`;
+    // 발행은 모아서 하므로, 아직 리더보드에 반영되지 않았음을 분명히 알립니다.
+    const pendingMsg =
+      json.unpublished > 0
+        ? `\n\n아직 리더보드에 반영되지 않았습니다.\n` +
+          `미발행 ${json.unpublished}건 — '발행하기'를 눌러야 배포됩니다.`
+        : "";
 
     if (act === "approve") {
       const added = json.applied?.added?.name;
       alert(
         `data.js 에 반영했습니다.` +
           (added ? `\n등록된 이름: ${added}` : "") +
-          gitMsgOf(json.git),
+          pendingMsg,
       );
     }
 
     if (act === "revert") {
       alert(
-        `data.js 에서 기록을 삭제했습니다.${gitMsgOf(json.git)}` +
-          (json.followUp ? `\n\n[후속 조치] ${json.followUp}` : ""),
+        `data.js 에서 기록을 삭제했습니다.` +
+          (json.followUp ? `\n\n[후속 조치] ${json.followUp}` : "") +
+          pendingMsg,
       );
     }
     await load();
+loadUnpublished();
   } catch (err) {
     flash(card, "err", `오류: ${err.message}`);
   } finally {
@@ -302,3 +394,4 @@ listEl.addEventListener("click", async (e) => {
 });
 
 load();
+loadUnpublished();

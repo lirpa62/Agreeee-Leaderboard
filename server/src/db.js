@@ -64,6 +64,20 @@ if (!existingCols.has("revert_reason")) {
   db.exec("ALTER TABLE submissions ADD COLUMN revert_reason TEXT");
 }
 
+/**
+ * 발행(Git 커밋+푸시) 여부.
+ *
+ * Netlify 는 배포 1회당 크레딧을 소모하므로, 승인할 때마다 푸시하면
+ * 승인 10건 = 배포 10회가 됩니다. 승인 시에는 data.js 만 고쳐 두고
+ * 커밋·푸시는 모아서 한 번만 하기 위한 컬럼입니다.
+ *
+ *  NULL  : 아직 발행되지 않음 (data.js 에는 이미 반영됨)
+ *  값 있음: 발행된 시각
+ */
+if (!existingCols.has("published_at")) {
+  db.exec("ALTER TABLE submissions ADD COLUMN published_at TEXT");
+}
+
 const insertStmt = db.prepare(`
 INSERT INTO submissions (
   kind, streamer_name, color, channel_url,
@@ -150,13 +164,21 @@ function updateStreamerName(id, name) {
     .run(name, id);
 }
 
-/** 승인 취소 — 상태를 되돌리고 사유를 남깁니다. */
+/**
+ * 승인 취소 — 상태를 되돌리고 사유를 남깁니다.
+ *
+ * ⚠ published_at 을 반드시 NULL 로 되돌려야 합니다.
+ *   이미 발행된 기록을 취소하면 '삭제'라는 새로운 변경이 생기므로,
+ *   다시 미발행 상태가 되어 발행 대상에 포함되어야 합니다.
+ *   (지우지 않으면 data.js 에서는 사라졌는데 발행되지 않아
+ *    리더보드에는 계속 남아 있게 됩니다)
+ */
 function revertApproval(id, reason, adminNote) {
   return db
     .prepare(
       `UPDATE submissions
        SET status = 'rejected', revert_reason = ?, admin_note = ?,
-           reviewed_at = datetime('now')
+           reviewed_at = datetime('now'), published_at = NULL
        WHERE id = ? AND status = 'approved'`,
     )
     .run(reason, adminNote || null, id);
@@ -218,6 +240,43 @@ function listPendingPublic(limit = 30) {
     .all(limit);
 }
 
+/**
+ * data.js 에는 반영됐지만 아직 발행(푸시)되지 않은 건들.
+ * 승인뿐 아니라 승인취소(삭제)도 발행 대상입니다.
+ */
+function listUnpublished() {
+  return db
+    .prepare(
+      `SELECT id, kind, status, streamer_name, game_time, tos_time,
+              is_shortcut, is_retry, revert_reason, reviewed_at
+       FROM submissions
+       WHERE published_at IS NULL
+         AND reviewed_at IS NOT NULL
+         AND (status = 'approved' OR revert_reason IS NOT NULL)
+       ORDER BY reviewed_at ASC`,
+    )
+    .all();
+}
+
+function countUnpublished() {
+  return db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM submissions
+       WHERE published_at IS NULL
+         AND reviewed_at IS NOT NULL
+         AND (status = 'approved' OR revert_reason IS NOT NULL)`,
+    )
+    .get().n;
+}
+
+/** 발행 완료 표시 (여러 건을 한 트랜잭션으로) */
+const markPublished = db.transaction((ids) => {
+  const stmt = db.prepare(
+    "UPDATE submissions SET published_at = datetime('now') WHERE id = ?",
+  );
+  for (const id of ids) stmt.run(id);
+});
+
 /** 같은 스트리머의 중복 대기 제출 확인 (스팸/실수 방지) */
 function findPendingDuplicate(kind, streamerName) {
   return db
@@ -239,6 +298,9 @@ module.exports = {
   getPublicStatus,
   findByName,
   listPendingPublic,
+  listUnpublished,
+  countUnpublished,
+  markPublished,
   countByStatus,
   findPendingDuplicate,
 };

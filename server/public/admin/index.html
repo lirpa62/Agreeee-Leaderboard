@@ -35,6 +35,19 @@
           <button type="button" class="xp-button" id="refreshBtn">새로고침</button>
         </div>
 
+        <!-- 발행 대기 안내 (Netlify 배포 크레딧 절약을 위해 모아서 발행) -->
+        <div class="publish-bar" id="publishBar" hidden>
+          <div class="publish-info">
+            <strong id="publishCount">0건</strong>이 리더보드에 아직
+            반영되지 않았습니다.
+            <span class="publish-hint" id="publishHint"></span>
+          </div>
+          <button type="button" class="xp-button primary" id="publishBtn">
+            🚀 발행하기
+          </button>
+        </div>
+        <ul class="publish-list" id="publishList" hidden></ul>
+
         <div id="list" class="list"></div>
         <p class="empty" id="empty" hidden>표시할 제출이 없습니다.</p>
       </div>

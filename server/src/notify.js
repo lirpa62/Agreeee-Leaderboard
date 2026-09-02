@@ -158,14 +158,12 @@ function notifyReviewed(sub, action, extra = {}) {
       inline: true,
     });
   }
-  if (extra.git) {
+  // 발행은 배포 크레딧을 아끼려고 모아서 하므로,
+  // 잊지 않도록 쌓인 미발행 건수를 함께 알립니다.
+  if (typeof extra.unpublished === "number" && extra.unpublished > 0) {
     fields.push({
-      name: "Git",
-      value: safe(
-        extra.git.committed
-          ? `커밋 ${extra.git.sha}${extra.git.pushed ? " (푸시됨)" : " (푸시 안 함)"}`
-          : extra.git.reason || "커밋 안 함",
-      ),
+      name: "미발행",
+      value: `${extra.unpublished}건 — 관리자 화면에서 '발행'을 눌러야 리더보드에 반영됩니다.`,
       inline: false,
     });
   }
@@ -227,9 +225,50 @@ function recordRejection(kind) {
   }
 }
 
+/** 발행 완료 알림 */
+function notifyPublished(result, items) {
+  if (!isEnabled()) return;
+
+  const added = items.filter((i) => i.status === "approved");
+  const removed = items.filter((i) => i.revert_reason);
+
+  const list = items
+    .slice(0, 15)
+    .map(
+      (s) =>
+        `${s.revert_reason ? "➖" : "➕"} ${s.streamer_name} (${s.game_time})`,
+    )
+    .join("\n");
+
+  send({
+    username: "리더보드 인정협회",
+    embeds: [
+      {
+        title: `🚀 발행 완료 — ${items.length}건`,
+        description:
+          list + (items.length > 15 ? `\n… 외 ${items.length - 15}건` : ""),
+        color: COLORS.success,
+        fields: [
+          { name: "추가", value: `${added.length}건`, inline: true },
+          { name: "삭제", value: `${removed.length}건`, inline: true },
+          {
+            name: "Git",
+            value: safe(
+              `커밋 ${result.sha}${result.pushed ? " · 푸시됨" : " · 푸시 안 함(수동 필요)"}`,
+            ),
+            inline: false,
+          },
+        ],
+        timestamp: new Date().toISOString(),
+      },
+    ],
+  });
+}
+
 module.exports = {
   isEnabled,
   notifyNewSubmission,
   notifyReviewed,
+  notifyPublished,
   recordRejection,
 };

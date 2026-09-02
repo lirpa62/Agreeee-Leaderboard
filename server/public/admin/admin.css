@@ -221,6 +221,94 @@ body.login-page {
   color: #fff;
 }
 
+/* ── 발행 대기 ────────────────────────────────────────── */
+.publish-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 11px 13px;
+  margin-bottom: 10px;
+  background: #fdf6d8;
+  border: 1px solid #e0a900;
+}
+
+.publish-bar[hidden] {
+  display: none;
+}
+
+.publish-info {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #6b4d00;
+}
+
+.publish-hint {
+  display: block;
+  font-size: 11px;
+  color: #8a6d3b;
+}
+
+.publish-list {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+  border: 1px solid var(--xp-shadow);
+  background: #fff;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.publish-list[hidden] {
+  display: none;
+}
+
+.publish-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 6px 11px;
+  font-size: 12px;
+  border-bottom: 1px solid #f0eee2;
+}
+
+.publish-item:last-child {
+  border-bottom: none;
+}
+
+.publish-op {
+  flex: 0 0 auto;
+  font-size: 10.5px;
+  font-weight: bold;
+  padding: 1px 7px;
+  border-radius: 2px;
+  border: 1px solid;
+}
+
+.publish-item.add .publish-op {
+  background: #ddf0d5;
+  border-color: #4b7d45;
+  color: #1d4a18;
+}
+
+.publish-item.remove .publish-op {
+  background: #f6d9d9;
+  border-color: #a4565a;
+  color: #6d1a1e;
+}
+
+.publish-name {
+  font-weight: bold;
+  flex: 1;
+}
+
+.publish-time,
+.publish-id {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: #666;
+}
+
 /* ── 제출 카드 ────────────────────────────────────────── */
 .list {
   display: flex;

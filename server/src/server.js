@@ -413,19 +413,16 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
       sub.streamer_name = finalName;
     }
 
-    let gitResult = { committed: false, reason: "" };
-    try {
-      gitResult = await git.commitDataFile(sub);
-    } catch (e) {
-      gitResult = { committed: false, reason: `커밋 실패: ${e.message}` };
-    }
-
+    // 커밋·푸시는 하지 않습니다. Netlify 배포 크레딧을 아끼기 위해
+    // 여러 건을 모아 '발행' 버튼으로 한 번에 처리합니다.
     db.setStatus(sub.id, "approved", String(req.body?.note || ""));
+
+    const unpublished = db.countUnpublished();
     notify.notifyReviewed(sub, "approved", {
-      git: gitResult,
       note: req.body?.note,
+      unpublished,
     });
-    res.json({ ok: true, applied, git: gitResult });
+    res.json({ ok: true, applied, unpublished });
   } catch (e) {
     // data.js 수정 실패 시 상태를 바꾸지 않습니다.
     res.status(500).json({ ok: false, error: e.message });
@@ -466,24 +463,20 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
       arrayName: dataFile.arrayNameFor(sub),
     });
 
-    let gitResult = { committed: false, reason: "" };
-    try {
-      gitResult = await git.commitDataFile(sub, { revert: true, reason });
-    } catch (e) {
-      gitResult = { committed: false, reason: `커밋 실패: ${e.message}` };
-    }
-
+    // 삭제도 발행 대상입니다. (커밋은 '발행' 시 한 번에)
     db.revertApproval(sub.id, reason, String(req.body?.note || ""));
+
+    const unpublished = db.countUnpublished();
     notify.notifyReviewed(sub, "reverted", {
       reason,
-      git: gitResult,
       note: req.body?.note,
+      unpublished,
     });
 
     res.json({
       ok: true,
       reverted,
-      git: gitResult,
+      unpublished,
       // 캐주얼 모드는 기존 관례상 하단 삭제 목록에 남깁니다.
       followUp:
         reason === "casual"
@@ -492,6 +485,58 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
           : null,
     });
   } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/** 미발행 목록 조회 */
+app.get("/api/admin/unpublished", requireAdmin, (req, res) => {
+  res.json({
+    ok: true,
+    rows: db.listUnpublished(),
+    autoPush: git.AUTO_PUSH,
+  });
+});
+
+/**
+ * 발행 — 미발행 건들을 하나의 커밋으로 묶어 푸시합니다.
+ *
+ * Netlify 는 배포 1회당 크레딧을 쓰므로(1 deploy = 15 credits),
+ * 승인 10건을 개별 푸시하면 150 크레딧이 나갑니다.
+ * 모아서 한 번만 발행하면 15 크레딧으로 끝납니다.
+ */
+app.post("/api/admin/publish", requireAdmin, async (req, res) => {
+  const items = db.listUnpublished();
+  if (!items.length) {
+    return res
+      .status(409)
+      .json({ ok: false, error: "발행할 변경 사항이 없습니다." });
+  }
+
+  try {
+    const result = await git.publishBatch(items);
+
+    // data.js 에 변경이 없다면(수동 커밋 등) 발행 완료로 정리만 합니다.
+    if (result.alreadyClean) {
+      db.markPublished(items.map((i) => i.id));
+      return res.json({
+        ok: true,
+        cleaned: true,
+        count: items.length,
+        message: result.reason,
+      });
+    }
+
+    if (!result.published) {
+      return res.status(500).json({ ok: false, error: result.reason });
+    }
+
+    db.markPublished(items.map((i) => i.id));
+    notify.notifyPublished(result, items);
+
+    res.json({ ok: true, ...result });
+  } catch (e) {
+    // 커밋·푸시에 실패하면 발행 표시를 하지 않아 다시 시도할 수 있게 둡니다.
     res.status(500).json({ ok: false, error: e.message });
   }
 });
