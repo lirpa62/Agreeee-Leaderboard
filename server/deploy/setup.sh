@@ -25,6 +25,29 @@ if [ ! -d "$SERVER_DIR" ]; then
   exit 1
 fi
 
+say "스왑 확보 (메모리 1GB 인스턴스 대응)"
+# E2.1.Micro 는 메모리가 1GB 뿐이라 better-sqlite3 네이티브 컴파일 중
+# OOM 으로 죽는 경우가 많습니다. 스왑이 없으면 만들어 둡니다.
+TOTAL_MB=$(free -m | awk '/^Mem:/{print $2}')
+SWAP_MB=$(free -m | awk '/^Swap:/{print $2}')
+if [ "$SWAP_MB" -lt 1024 ] && [ "$TOTAL_MB" -lt 3000 ]; then
+  if [ ! -f /swapfile ]; then
+    sudo fallocate -l 2G /swapfile || sudo dd if=/dev/zero of=/swapfile bs=1M count=2048
+    sudo chmod 600 /swapfile
+    sudo mkswap /swapfile
+    sudo swapon /swapfile
+    grep -q '^/swapfile' /etc/fstab || \
+      echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab >/dev/null
+    # 메모리가 작으므로 스왑을 조금 더 적극적으로 씁니다.
+    sudo sysctl -w vm.swappiness=30 >/dev/null
+    grep -q '^vm.swappiness' /etc/sysctl.conf || \
+      echo 'vm.swappiness=30' | sudo tee -a /etc/sysctl.conf >/dev/null
+    echo "2GB 스왑을 만들었습니다."
+  fi
+else
+  echo "스왑이 이미 충분합니다. (${SWAP_MB}MB)"
+fi
+
 say "시스템 패키지 업데이트"
 sudo apt-get update -y
 # better-sqlite3 네이티브 빌드에 필요합니다.
@@ -40,7 +63,22 @@ node -v
 
 say "의존성 설치"
 cd "$SERVER_DIR"
-npm ci --omit=dev 2>/dev/null || npm install --omit=dev
+# better-sqlite3 v13 은 플랫폼별 바이너리(prebuilds/linux-x64.node)를
+# 패키지에 포함해 배포하므로 보통 컴파일이 일어나지 않습니다.
+if ! npm ci --omit=dev 2>/dev/null; then
+  npm install --omit=dev
+fi
+
+# 네이티브 모듈이 실제로 로드되는지 확인합니다.
+if ! node -e "require('better-sqlite3')" 2>/dev/null; then
+  warn "prebuilt 바이너리를 쓸 수 없어 소스에서 빌드합니다. (몇 분 걸립니다)"
+  npm rebuild better-sqlite3 --build-from-source
+  node -e "require('better-sqlite3')" || {
+    echo "better-sqlite3 설치 실패. 스왑과 build-essential 설치를 확인하세요."
+    exit 1
+  }
+fi
+echo "better-sqlite3 정상 로드 확인"
 
 say ".env 준비"
 if [ ! -f "$SERVER_DIR/.env" ]; then
