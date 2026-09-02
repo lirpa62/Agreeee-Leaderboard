@@ -333,6 +333,93 @@ body {
   margin-top: 6px;
 }
 
+/* ── 상태 조회 ───────────────────────────────────────── */
+.lookup-row {
+  display: flex;
+  gap: 8px;
+}
+
+.lookup-row .xp-input {
+  flex: 1;
+}
+
+.status-card {
+  border: 1px solid var(--xp-shadow);
+  background: #fff;
+  margin-top: 16px;
+}
+
+.status-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  background: var(--xp-face-alt);
+  border-bottom: 1px solid #e0ddcd;
+}
+
+.status-badge {
+  padding: 3px 12px;
+  border-radius: 2px;
+  font-size: 12px;
+  font-weight: bold;
+  border: 1px solid;
+}
+
+.status-badge.pending {
+  background: #fdf6d8;
+  border-color: #e0a900;
+  color: #6b4d00;
+}
+
+.status-badge.approved {
+  background: #ddf0d5;
+  border-color: #4b7d45;
+  color: #1d4a18;
+}
+
+.status-badge.rejected {
+  background: #f6d9d9;
+  border-color: #a4565a;
+  color: #6d1a1e;
+}
+
+.status-id {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: #666;
+}
+
+.status-body {
+  padding: 12px;
+}
+
+.field-row {
+  display: flex;
+  gap: 10px;
+  font-size: 12.5px;
+  line-height: 1.9;
+}
+
+.field-row .k {
+  flex: 0 0 92px;
+  color: #555;
+}
+
+.field-row .v {
+  flex: 1;
+  word-break: break-all;
+}
+
+.status-msg {
+  margin: 0;
+  padding: 11px 12px;
+  border-top: 1px solid #e0ddcd;
+  background: var(--xp-face-alt);
+  font-size: 12px;
+  line-height: 1.65;
+}
+
 /* ── 캡차 ────────────────────────────────────────────── */
 .captcha-row {
   display: flex;

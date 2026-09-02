@@ -53,6 +53,17 @@ CREATE INDEX IF NOT EXISTS idx_status  ON submissions(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_created ON submissions(created_at DESC);
 `);
 
+/**
+ * 승인 취소 사유를 저장할 컬럼 추가 (기존 DB 도 안전하게 갱신).
+ * SQLite 는 IF NOT EXISTS 를 지원하지 않으므로 컬럼 존재를 먼저 확인합니다.
+ */
+const existingCols = new Set(
+  db.prepare("PRAGMA table_info(submissions)").all().map((c) => c.name),
+);
+if (!existingCols.has("revert_reason")) {
+  db.exec("ALTER TABLE submissions ADD COLUMN revert_reason TEXT");
+}
+
 const insertStmt = db.prepare(`
 INSERT INTO submissions (
   kind, streamer_name, color, channel_url,
@@ -128,6 +139,48 @@ function countByStatus() {
   return out;
 }
 
+/** 승인 취소 — 상태를 되돌리고 사유를 남깁니다. */
+function revertApproval(id, reason, adminNote) {
+  return db
+    .prepare(
+      `UPDATE submissions
+       SET status = 'rejected', revert_reason = ?, admin_note = ?,
+           reviewed_at = datetime('now')
+       WHERE id = ? AND status = 'approved'`,
+    )
+    .run(reason, adminNote || null, id);
+}
+
+/**
+ * 제출자에게 보여줄 공개 정보만 추립니다.
+ * IP, 관리자 메모 등 내부 정보는 제외합니다.
+ */
+function getPublicStatus(id) {
+  const row = db
+    .prepare(
+      `SELECT id, kind, status, streamer_name, game_time, tos_time,
+              is_shortcut, is_retry, is_casual,
+              created_at, reviewed_at, revert_reason
+       FROM submissions WHERE id = ?`,
+    )
+    .get(id);
+  return row || null;
+}
+
+/** 리더보드 '검토 중' 섹션에 보여줄 대기 목록 (최소 정보만) */
+function listPendingPublic(limit = 30) {
+  return db
+    .prepare(
+      `SELECT id, kind, streamer_name, game_time, tos_time,
+              is_shortcut, is_retry, created_at
+       FROM submissions
+       WHERE status = 'pending'
+       ORDER BY created_at DESC
+       LIMIT ?`,
+    )
+    .all(limit);
+}
+
 /** 같은 스트리머의 중복 대기 제출 확인 (스팸/실수 방지) */
 function findPendingDuplicate(kind, streamerName) {
   return db
@@ -144,6 +197,9 @@ module.exports = {
   listSubmissions,
   getSubmission,
   setStatus,
+  revertApproval,
+  getPublicStatus,
+  listPendingPublic,
   countByStatus,
   findPendingDuplicate,
 };

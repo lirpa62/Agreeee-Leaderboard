@@ -28,7 +28,7 @@ function run(args, cwd = REPO_DIR) {
  * data.js 변경분을 커밋합니다.
  * 커밋 대상을 data.js 로 한정해 다른 작업 중인 변경이 섞이지 않게 합니다.
  */
-async function commitDataFile(submission) {
+async function commitDataFile(submission, options = {}) {
   if (!AUTO_COMMIT) {
     return { committed: false, reason: "GIT_AUTO_COMMIT 이 꺼져 있습니다." };
   }
@@ -47,15 +47,22 @@ async function commitDataFile(submission) {
           ? "재도전 인정"
           : "명예의 전당";
 
-  const message =
-    `feat: ${submission.streamer_name} ${league} 기록 추가\n\n` +
-    `- 기록: ${submission.game_time}` +
-    (submission.tos_time ? ` / 약관: ${submission.tos_time}` : "") +
-    `\n- 제출 #${submission.id}` +
-    (submission.channel_name ? ` (채널: ${submission.channel_name})` : "") +
-    (submission.follower_count != null
-      ? ` 팔로워 ${submission.follower_count.toLocaleString()}명`
-      : "");
+  const message = options.revert
+    ? `fix: ${submission.streamer_name} ${league} 기록 삭제\n\n` +
+      `- 사유: ${
+        options.reason === "casual" ? "캐주얼 모드 확인" : "오등록 정정"
+      }\n` +
+      `- 기록: ${submission.game_time}` +
+      (submission.tos_time ? ` / 약관: ${submission.tos_time}` : "") +
+      `\n- 제출 #${submission.id} 승인 취소`
+    : `feat: ${submission.streamer_name} ${league} 기록 추가\n\n` +
+      `- 기록: ${submission.game_time}` +
+      (submission.tos_time ? ` / 약관: ${submission.tos_time}` : "") +
+      `\n- 제출 #${submission.id}` +
+      (submission.channel_name ? ` (채널: ${submission.channel_name})` : "") +
+      (submission.follower_count != null
+        ? ` 팔로워 ${submission.follower_count.toLocaleString()}명`
+        : "");
 
   await run(["add", "--", "data.js"]);
   await run(["commit", "-m", message]);

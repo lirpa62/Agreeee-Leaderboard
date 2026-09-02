@@ -290,6 +290,73 @@
   window.updateActiveWindow = updateActiveWindow;
 })();
 
+/* =========================================================
+   검토 중인 제출 목록 (선택적)
+   - 서버가 없거나 응답하지 않아도 리더보드는 정상 동작해야 하므로
+     실패 시 조용히 섹션을 숨긴 채 넘어갑니다.
+   - 순위·차트에는 절대 반영하지 않습니다. (미검증 기록이므로)
+   ========================================================= */
+(function loadPendingSubmissions() {
+  const meta = document
+    .querySelector('meta[name="api-base"]')
+    ?.getAttribute("content")
+    ?.trim();
+  if (!meta) return; // 서버 주소가 없으면 기능 자체를 쓰지 않음
+
+  const base = meta.replace(/\/$/, "");
+  const section = document.getElementById("sectionPending");
+  const list = document.getElementById("pendingList");
+  if (!section || !list) return;
+
+  function leagueOf(r) {
+    if (r.kind === "speedrun") return "⚡ 스피드런";
+    if (r.is_shortcut) return "🎈 풍선 숏컷";
+    if (r.is_retry) return "📜 재도전";
+    return "🏆 명예의 전당";
+  }
+
+  fetch(`${base}/api/submissions/pending`)
+    .then((res) => (res.ok ? res.json() : null))
+    .then((json) => {
+      if (!json?.ok || !Array.isArray(json.rows) || json.rows.length === 0) {
+        return;
+      }
+      list.innerHTML = "";
+      json.rows.forEach((r) => {
+        const li = document.createElement("li");
+        li.className = "pending-item";
+
+        const name = document.createElement("span");
+        name.className = "pending-name";
+        // textContent 로 넣어 사용자 입력이 HTML 로 해석되지 않게 합니다.
+        name.textContent = r.streamer_name;
+
+        const tag = document.createElement("span");
+        tag.className = "pending-tag";
+        tag.textContent = "임시";
+
+        const league = document.createElement("span");
+        league.className = "pending-league";
+        league.textContent = leagueOf(r);
+
+        const time = document.createElement("span");
+        time.className = "pending-time";
+        time.textContent = r.tos_time
+          ? `${r.game_time} / 약관 ${r.tos_time}`
+          : r.game_time;
+
+        li.append(tag, name, league, time);
+        list.appendChild(li);
+      });
+      section.hidden = false;
+      // 섹션이 늘어났으므로 스크롤 화살표 위치를 다시 계산
+      if (typeof checkScroll === "function") checkScroll();
+    })
+    .catch(() => {
+      /* 서버 미가동 등 — 리더보드는 그대로 동작합니다 */
+    });
+})();
+
 // FOUT 문제 해결 : 폰트 로딩 감지 및 화면 표시
 document.fonts.ready.then(function () {
   document.body.classList.add("fonts-loaded");

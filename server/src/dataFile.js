@@ -208,6 +208,168 @@ function applySubmission(submission, filePath = DATA_JS_PATH) {
   return { added, total: afterArr.length };
 }
 
+/**
+ * data.js 에서 항목 하나를 제거합니다. (승인 취소용)
+ *
+ * 승인 이후 다른 기록이 추가됐을 수 있으므로 위치가 아니라
+ * 이름 + 기록으로 정확히 찾습니다. 여러 개가 걸리면 중단합니다.
+ */
+function removeFromArray(src, arrayName, item) {
+  const startRe = new RegExp(`const\\s+${arrayName}\\s*=\\s*\\[`);
+  const startMatch = startRe.exec(src);
+  if (!startMatch) {
+    throw new Error(`data.js 에서 ${arrayName} 을(를) 찾을 수 없습니다.`);
+  }
+
+  const arrStart = startMatch.index + startMatch[0].length;
+
+  // 배열 본문 범위를 찾습니다 (appendToArray 와 같은 방식).
+  let i = arrStart;
+  let depth = 1;
+  while (i < src.length && depth > 0) {
+    const ch = src[i];
+    if (ch === "[") depth++;
+    else if (ch === "]") depth--;
+    else if (ch === '"' || ch === "'") {
+      const quote = ch;
+      i++;
+      while (i < src.length && src[i] !== quote) {
+        if (src[i] === "\\") i++;
+        i++;
+      }
+    }
+    i++;
+  }
+  if (depth !== 0) throw new Error(`${arrayName} 배열의 끝을 찾지 못했습니다.`);
+  const arrEnd = i - 1;
+
+  const body = src.slice(arrStart, arrEnd);
+
+  // 최상위 객체 리터럴 `{...}` 들의 범위를 수집합니다.
+  const entries = [];
+  let d = 0;
+  let objStart = -1;
+  for (let j = 0; j < body.length; j++) {
+    const ch = body[j];
+    if (ch === '"' || ch === "'") {
+      const quote = ch;
+      j++;
+      while (j < body.length && body[j] !== quote) {
+        if (body[j] === "\\") j++;
+        j++;
+      }
+      continue;
+    }
+    if (ch === "{") {
+      if (d === 0) objStart = j;
+      d++;
+    } else if (ch === "}") {
+      d--;
+      if (d === 0 && objStart !== -1) {
+        entries.push({ start: objStart, end: j + 1 });
+        objStart = -1;
+      }
+    }
+  }
+
+  // 이름 + gameTime 이 모두 일치하는 항목을 찾습니다.
+  const matches = entries.filter((e) => {
+    const text = body.slice(e.start, e.end);
+    let parsed;
+    try {
+      parsed = vm.runInNewContext(`(${text})`, {}, { timeout: 1000 });
+    } catch {
+      return false;
+    }
+    return (
+      parsed &&
+      parsed.name === item.name &&
+      parsed.gameTime === item.gameTime &&
+      (item.tosTime === undefined ||
+        item.tosTime === null ||
+        parsed.tosTime === item.tosTime)
+    );
+  });
+
+  if (matches.length === 0) {
+    throw new Error(
+      `${arrayName} 에서 '${item.name}' (${item.gameTime}) 기록을 찾지 못했습니다. ` +
+        `이미 수동으로 삭제되었을 수 있습니다.`,
+    );
+  }
+  if (matches.length > 1) {
+    throw new Error(
+      `'${item.name}' (${item.gameTime}) 과 일치하는 기록이 ${matches.length}개 있습니다. ` +
+        `자동 삭제가 위험하므로 직접 확인해 주세요.`,
+    );
+  }
+
+  const m = matches[0];
+  // 항목 앞의 공백/줄바꿈과 뒤따르는 쉼표·줄끝 주석까지 함께 지웁니다.
+  let from = m.start;
+  while (from > 0 && (body[from - 1] === " " || body[from - 1] === "\t")) from--;
+  if (from > 0 && body[from - 1] === "\n") from--;
+
+  let to = m.end;
+  if (body[to] === ",") to++;
+  // 줄 끝 주석이 남지 않도록 줄바꿈 직전까지 훑습니다.
+  const restOfLine = body.slice(to, body.indexOf("\n", to) + 1 || undefined);
+  if (/^[ \t]*\/\/[^\n]*$/.test(restOfLine.replace(/\n$/, ""))) {
+    to += restOfLine.replace(/\n$/, "").length;
+  }
+
+  const newBody = body.slice(0, from) + body.slice(to);
+  return src.slice(0, arrStart) + newBody + src.slice(arrEnd);
+}
+
+/**
+ * 승인된 기록을 data.js 에서 제거합니다. (승인 취소)
+ * 쓰기 전 재파싱으로 검증하며, 실패하면 파일을 건드리지 않습니다.
+ *
+ * ⚠ STREAMER_COLORS 항목은 일부러 남깁니다.
+ *   같은 스트리머가 다른 리그(숏컷/재도전/스피드런)에도 올라가 있을 수 있어,
+ *   색상을 지우면 남은 기록의 색이 기본값으로 바뀝니다.
+ *   불필요한 색상은 나중에 수동으로 정리하면 됩니다.
+ */
+function revertSubmission(submission, filePath = DATA_JS_PATH) {
+  const before = readData(filePath);
+
+  const item = { name: submission.name, gameTime: submission.gameTime };
+  if (submission.tosTime) item.tosTime = submission.tosTime;
+
+  const next = removeFromArray(before.src, submission.arrayName, item);
+
+  const tmpCtx = { __out: null };
+  vm.createContext(tmpCtx);
+  try {
+    vm.runInContext(
+      `${next};__out={${ARRAY_NAMES.join(",")},STREAMER_COLORS};`,
+      tmpCtx,
+      { timeout: 5000 },
+    );
+  } catch (e) {
+    throw new Error(`생성된 data.js 가 올바르지 않습니다: ${e.message}`);
+  }
+
+  const afterArr = tmpCtx.__out[submission.arrayName];
+  const beforeArr = before[submission.arrayName];
+  if (afterArr.length !== beforeArr.length - 1) {
+    throw new Error(
+      `항목 수가 맞지 않습니다 (${beforeArr.length} → ${afterArr.length}).`,
+    );
+  }
+  // 다른 배열이 훼손되지 않았는지 확인
+  for (const name of ARRAY_NAMES) {
+    if (name === submission.arrayName) continue;
+    if (tmpCtx.__out[name].length !== before[name].length) {
+      throw new Error(`${name} 이(가) 함께 변경되었습니다. 중단합니다.`);
+    }
+  }
+
+  fs.writeFileSync(filePath, next, "utf8");
+  return { removed: item, total: afterArr.length };
+}
+
 /** 제출 종류 → data.js 배열 이름 */
 function arrayNameFor(sub) {
   if (sub.kind === "speedrun") return "SPEEDRUN_DATA";
@@ -220,7 +382,9 @@ module.exports = {
   DATA_JS_PATH,
   readData,
   applySubmission,
+  revertSubmission,
   appendToArray,
+  removeFromArray,
   arrayNameFor,
   serializeItem,
 };

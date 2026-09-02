@@ -88,7 +88,17 @@ function cardHtml(row) {
              <button type="button" class="xp-button primary" data-act="approve">승인 → 반영</button>`
           : `<span class="status-tag">${row.status === "approved" ? "승인됨" : "반려됨"}${
               row.reviewed_at ? ` · ${esc(row.reviewed_at)}` : ""
-            }</span>`
+            }${
+              row.revert_reason
+                ? ` (${row.revert_reason === "casual" ? "캐주얼 모드" : "오등록"})`
+                : ""
+            }</span>
+             ${
+               row.status === "approved"
+                 ? `<button type="button" class="xp-button danger"
+                      data-act="revert" style="margin-left:auto">승인 취소</button>`
+                 : ""
+             }`
       }
     </div>
   </div>`;
@@ -152,12 +162,27 @@ listEl.addEventListener("click", async (e) => {
     if (!confirm(`제출 #${id} 을(를) ${label} 처리할까요?`)) return;
   }
 
+  // 승인 취소는 사유에 따라 후속 처리가 달라집니다.
+  let revertReason = null;
+  if (act === "revert") {
+    const answer = prompt(
+      `제출 #${id} 의 승인을 취소하고 data.js 에서 기록을 삭제합니다.\n\n` +
+        `사유를 선택하세요.\n` +
+        `  1 = 오등록 (단순 실수 — 완전 삭제)\n` +
+        `  2 = 캐주얼 모드 확인 (하단 삭제 목록에 남김)\n\n` +
+        `취소하려면 빈 칸으로 두고 확인을 누르세요.`,
+      "1",
+    );
+    if (answer !== "1" && answer !== "2") return;
+    revertReason = answer === "2" ? "casual" : "mistake";
+  }
+
   btn.disabled = true;
   try {
     const res = await fetch(`/api/admin/submissions/${id}/${act}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ note }),
+      body: JSON.stringify({ note, reason: revertReason }),
     });
     const json = await res.json();
 
@@ -179,12 +204,20 @@ listEl.addEventListener("click", async (e) => {
       return;
     }
 
-    if (act === "approve") {
-      const g = json.git || {};
-      const gitMsg = g.committed
+    const gitMsgOf = (g = {}) =>
+      g.committed
         ? ` · 커밋 ${g.sha}${g.pushed ? " (푸시됨)" : ""}`
         : ` · ${g.reason || "커밋 안 함"}`;
-      alert(`data.js 에 반영했습니다.${gitMsg}`);
+
+    if (act === "approve") {
+      alert(`data.js 에 반영했습니다.${gitMsgOf(json.git)}`);
+    }
+
+    if (act === "revert") {
+      alert(
+        `data.js 에서 기록을 삭제했습니다.${gitMsgOf(json.git)}` +
+          (json.followUp ? `\n\n[후속 조치] ${json.followUp}` : ""),
+      );
     }
     await load();
   } catch (err) {

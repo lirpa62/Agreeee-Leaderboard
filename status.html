@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="'이용약관에 동의하고 싶어' 리더보드 기록 등록 요청 처리 상태를 조회합니다."
+    />
+    <meta name="api-base" content="https://agreeee-api.duckdns.org" />
+    <link rel="icon" type="image/x-icon" href="favicon.png" />
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
+    <link
+      rel="stylesheet"
+      as="style"
+      crossorigin
+      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css"
+    />
+    <link rel="stylesheet" href="submit.css" />
+    <title>제출 상태 조회 - 이용약관 동의 게임 리더보드</title>
+  </head>
+  <body>
+    <div class="xp-window">
+      <div class="xp-titlebar">
+        <span class="xp-titlebar-icon">🔎</span>
+        <span class="xp-titlebar-text">제출 상태 조회</span>
+        <span class="xp-btns">
+          <a class="xp-btn close" href="index.html" title="리더보드로 돌아가기"
+            >✕</a
+          >
+        </span>
+      </div>
+
+      <div class="xp-window-body">
+        <div class="xp-infobox">
+          <span class="xp-info-icon">i</span>
+          <div>
+            기록 등록 요청 시 받으신 <strong>접수 번호</strong>를 입력하면
+            처리 상태를 확인할 수 있습니다.
+          </div>
+        </div>
+
+        <form id="lookupForm">
+          <div class="field">
+            <label for="idInput">접수 번호</label>
+            <div class="lookup-row">
+              <input
+                type="number"
+                id="idInput"
+                class="xp-input"
+                min="1"
+                placeholder="예) 12"
+                required
+              />
+              <button type="submit" class="xp-button agree">조회</button>
+            </div>
+          </div>
+        </form>
+
+        <div class="errors" id="errors" hidden></div>
+
+        <div class="status-card" id="result" hidden>
+          <div class="status-head">
+            <span class="status-badge" id="statusBadge">확인 중</span>
+            <span class="status-id" id="statusId"></span>
+          </div>
+          <div class="status-body">
+            <div class="field-row">
+              <span class="k">스트리머</span><span class="v" id="rName"></span>
+            </div>
+            <div class="field-row">
+              <span class="k">리그</span><span class="v" id="rLeague"></span>
+            </div>
+            <div class="field-row">
+              <span class="k">클리어 회차</span><span class="v" id="rGame"></span>
+            </div>
+            <div class="field-row" id="rTosRow">
+              <span class="k">이용약관</span><span class="v" id="rTos"></span>
+            </div>
+            <div class="field-row">
+              <span class="k">제출 시각</span><span class="v" id="rCreated"></span>
+            </div>
+            <div class="field-row" id="rReviewedRow" hidden>
+              <span class="k">처리 시각</span><span class="v" id="rReviewed"></span>
+            </div>
+          </div>
+          <p class="status-msg" id="statusMsg"></p>
+        </div>
+
+        <div class="actions" style="margin-top: 18px">
+          <a class="xp-button" href="index.html">리더보드</a>
+          <a class="xp-button" href="submit.html">기록 등록 요청</a>
+        </div>
+      </div>
+    </div>
+
+    <script src="status.js"></script>
+  </body>
+</html>

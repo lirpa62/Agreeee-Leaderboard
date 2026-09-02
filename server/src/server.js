@@ -139,6 +139,34 @@ app.get("/api/config", (req, res) => {
   });
 });
 
+/** 제출 상태 조회 (접수 번호로) */
+app.get(
+  "/api/submissions/:id/status",
+  rateLimit({ windowMs: 60_000, max: 60 }),
+  (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res.status(400).json({ ok: false, error: "접수 번호가 올바르지 않습니다." });
+    }
+    const row = db.getPublicStatus(id);
+    if (!row) {
+      return res.status(404).json({ ok: false, error: "해당 접수 번호를 찾을 수 없습니다." });
+    }
+    res.json({ ok: true, submission: row });
+  },
+);
+
+/** 검토 대기 목록 (리더보드 '검토 중' 섹션용) */
+app.get(
+  "/api/submissions/pending",
+  rateLimit({ windowMs: 60_000, max: 60 }),
+  (req, res) => {
+    // 정적 리더보드가 호출하므로 캐시를 길게 둡니다.
+    res.setHeader("Cache-Control", "public, max-age=120");
+    res.json({ ok: true, rows: db.listPendingPublic(30) });
+  },
+);
+
 /** 채널 조회 미리보기 (폼에서 이름/URL 확인용) */
 app.get(
   "/api/channel",
@@ -329,6 +357,57 @@ app.post("/api/admin/submissions/:id/reject", requireAdmin, (req, res) => {
   if (!sub) return res.status(404).json({ ok: false, error: "제출을 찾을 수 없습니다." });
   db.setStatus(sub.id, "rejected", String(req.body?.note || ""));
   res.json({ ok: true });
+});
+
+/**
+ * 승인 취소 — data.js 에서 기록을 제거합니다.
+ *
+ * reason:
+ *   'mistake' : 단순 오등록 → 완전 삭제
+ *   'casual'  : 캐주얼 모드 발각 → 삭제 후 하단 삭제 목록에 수동 추가 안내
+ */
+app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => {
+  const sub = db.getSubmission(Number(req.params.id));
+  if (!sub) return res.status(404).json({ ok: false, error: "제출을 찾을 수 없습니다." });
+  if (sub.status !== "approved") {
+    return res
+      .status(409)
+      .json({ ok: false, error: "승인된 제출만 취소할 수 있습니다." });
+  }
+
+  const reason = req.body?.reason === "casual" ? "casual" : "mistake";
+
+  try {
+    const reverted = dataFile.revertSubmission({
+      name: sub.streamer_name,
+      gameTime: sub.game_time,
+      tosTime: sub.tos_time,
+      arrayName: dataFile.arrayNameFor(sub),
+    });
+
+    let gitResult = { committed: false, reason: "" };
+    try {
+      gitResult = await git.commitDataFile(sub, { revert: true, reason });
+    } catch (e) {
+      gitResult = { committed: false, reason: `커밋 실패: ${e.message}` };
+    }
+
+    db.revertApproval(sub.id, reason, String(req.body?.note || ""));
+
+    res.json({
+      ok: true,
+      reverted,
+      git: gitResult,
+      // 캐주얼 모드는 기존 관례상 하단 삭제 목록에 남깁니다.
+      followUp:
+        reason === "casual"
+          ? `index.html 의 '캐주얼 모드 사용으로 인한 기록 삭제' 목록에 ` +
+            `${sub.streamer_name} 을(를) 추가해 주세요.`
+          : null,
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
 });
 
 // 관리자 화면 (정적)

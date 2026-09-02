@@ -524,6 +524,67 @@ h2 {
   }
 }
 
+/* 검토 중인 기록 (미검증 제출) */
+.pending-section[hidden] {
+  display: none;
+}
+
+.pending-notice {
+  font-size: 0.8rem;
+  color: #8a6d3b;
+  background: #fcf8e3;
+  border: 1px solid #faebcc;
+  border-radius: 6px;
+  padding: 8px 12px;
+  margin: 0 20px 12px;
+  line-height: 1.6;
+}
+
+.pending-list {
+  list-style: none;
+  padding: 0 20px;
+  margin: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.pending-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: #fff;
+  border: 1px dashed #c9a227;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 0.82rem;
+  color: #555;
+}
+
+.pending-tag {
+  background: #f0ad4e;
+  color: #fff;
+  font-size: 0.68rem;
+  font-weight: bold;
+  padding: 1px 7px;
+  border-radius: 10px;
+}
+
+.pending-name {
+  font-weight: bold;
+  color: #333;
+}
+
+.pending-league {
+  font-size: 0.72rem;
+  color: #888;
+}
+
+.pending-time {
+  font-size: 0.75rem;
+  color: #666;
+}
+
 .expand-btn {
   background-color: white;
   border: 1px solid #ccc;

@@ -20,6 +20,8 @@
     />
     <meta property="og:image" content="favicon.png" />
     <meta property="og:url" content="https://agreeee-leaderboard.netlify.app" />
+    <!-- 제출 서버 주소. 비우면 '검토 중인 기록' 섹션이 비활성화됩니다. -->
+    <meta name="api-base" content="https://agreeee-api.duckdns.org" />
     <link rel="icon" type="image/x-icon" href="favicon.png" />
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin />
     <link
@@ -396,6 +398,23 @@
           <div class="scroll-arrow up"></div>
           <div class="scroll-text">맨 위로</div>
         </div>
+      </div>
+
+      <!-- 검토 중인 제출 (서버에서 불러옴, 실패 시 표시되지 않음) -->
+      <div class="bottom-section pending-section" id="sectionPending" hidden>
+        <div class="section-title">
+          ⏳ 검토 중인 기록
+          <span class="xp-btns xp-only">
+            <span class="xp-btn sec-min" title="접기">_</span>
+            <span class="xp-btn sec-max" title="최대화">□</span>
+            <span class="xp-btn close sec-close" title="닫기">✕</span>
+          </span>
+        </div>
+        <div class="pending-notice">
+          아직 <strong>인정협회의 확인을 거치지 않은</strong> 제출입니다.
+          순위와 차트에는 반영되지 않으며, 증빙 확인 후 등록됩니다.
+        </div>
+        <ul class="pending-list" id="pendingList"></ul>
       </div>
 
       <div class="casual-mode">
