@@ -163,6 +163,25 @@ app.get(
   },
 );
 
+/**
+ * 스트리머 이름으로 제출 검색.
+ * 상태(대기/승인/반려)는 보여주지만 반려 사유는 제외합니다.
+ * 상세 사유는 접수 번호를 아는 사람만 볼 수 있습니다. (db.findByName 주석 참고)
+ */
+app.get(
+  "/api/submissions/search",
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  (req, res) => {
+    const name = String(req.query.name || "").trim();
+    if (name.length < 2) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "스트리머 이름을 두 글자 이상 입력해 주세요." });
+    }
+    res.json({ ok: true, rows: db.findByName(name) });
+  },
+);
+
 /** 검토 대기 목록 (리더보드 '검토 중' 섹션용) */
 app.get(
   "/api/submissions/pending",

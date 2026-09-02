@@ -178,6 +178,32 @@ function getPublicStatus(id) {
   return row || null;
 }
 
+/**
+ * 스트리머 이름으로 제출 검색.
+ *
+ * 이름은 리더보드에 이미 공개된 스트리머/채널명이므로 검색 자체는 안전합니다.
+ * 다만 **반려 사유와 관리자 메모는 돌려주지 않습니다.**
+ * 제출자가 곧 해당 스트리머라는 보장이 없어, 아무나 특정 스트리머의
+ * 반려 이력을 들여다볼 수 있게 되기 때문입니다.
+ * 상세 사유는 접수 번호를 아는 사람만 볼 수 있습니다. (getPublicStatus)
+ */
+function findByName(name) {
+  const keyword = String(name || "").trim();
+  if (!keyword) return [];
+  return db
+    .prepare(
+      `SELECT id, kind, status, streamer_name, game_time, tos_time,
+              is_shortcut, is_retry, is_casual, created_at, reviewed_at
+       FROM submissions
+       WHERE streamer_name LIKE ?
+       ORDER BY
+         CASE status WHEN 'pending' THEN 0 ELSE 1 END,
+         created_at DESC
+       LIMIT 20`,
+    )
+    .all(`%${keyword}%`);
+}
+
 /** 리더보드 '검토 중' 섹션에 보여줄 대기 목록 (최소 정보만) */
 function listPendingPublic(limit = 30) {
   return db
@@ -211,6 +237,7 @@ module.exports = {
   updateStreamerName,
   revertApproval,
   getPublicStatus,
+  findByName,
   listPendingPublic,
   countByStatus,
   findPendingDuplicate,

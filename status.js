@@ -98,13 +98,117 @@ async function lookup(id) {
   }
 }
 
+/* 조회 방식 전환 (접수 번호 / 이름) */
+let mode = "id";
+
+$("lookupTabs").addEventListener("click", (e) => {
+  const tab = e.target.closest(".tab");
+  if (!tab) return;
+  mode = tab.dataset.mode;
+  document
+    .querySelectorAll("#lookupTabs .tab")
+    .forEach((t) => t.classList.toggle("active", t === tab));
+  $("idField").hidden = mode !== "id";
+  $("nameField").hidden = mode !== "name";
+  $("errors").hidden = true;
+  $("result").hidden = true;
+  $("searchResults").hidden = true;
+  (mode === "id" ? $("idInput") : $("nameInput")).focus();
+});
+
+/** 이름으로 대기 중인 제출 검색 */
+async function searchByName(name) {
+  $("errors").hidden = true;
+  $("result").hidden = true;
+  const list = $("searchResults");
+
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/submissions/search?name=${encodeURIComponent(name)}`,
+    );
+    const json = await res.json();
+
+    if (!json.ok) {
+      list.hidden = true;
+      showError(json.error || "검색에 실패했습니다.");
+      return;
+    }
+    if (!json.rows.length) {
+      list.hidden = true;
+      showError(`'${name}' 으로 등록된 제출을 찾지 못했습니다.`);
+      return;
+    }
+
+    list.innerHTML = "";
+    json.rows.forEach((r) => {
+      const li = document.createElement("li");
+      li.className = "search-item";
+      li.tabIndex = 0;
+
+      const num = document.createElement("span");
+      num.className = "search-id";
+      num.textContent = `#${r.id}`;
+
+      const nm = document.createElement("span");
+      nm.className = "search-name";
+      nm.textContent = r.streamer_name;
+
+      const lg = document.createElement("span");
+      lg.className = "search-league";
+      lg.textContent = leagueOf(r);
+
+      const tm = document.createElement("span");
+      tm.className = "search-time";
+      tm.textContent = r.game_time;
+
+      // 상태는 보여주되, 반려 사유는 접수 번호로만 확인할 수 있습니다.
+      const info = STATUS_TEXT[r.status] || STATUS_TEXT.pending;
+      const st = document.createElement("span");
+      st.className = `status-badge ${info.cls}`;
+      st.textContent = info.label;
+
+      li.append(num, nm, lg, tm, st);
+      const open = () => {
+        $("idInput").value = r.id;
+        history.replaceState(null, "", `?id=${r.id}`);
+        list.hidden = true;
+        lookup(r.id);
+      };
+      li.addEventListener("click", open);
+      li.addEventListener("keydown", (ev) => {
+        if (ev.key === "Enter" || ev.key === " ") {
+          ev.preventDefault();
+          open();
+        }
+      });
+      list.appendChild(li);
+    });
+    list.hidden = false;
+  } catch {
+    list.hidden = true;
+    showError("조회 서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+  }
+}
+
 $("lookupForm").addEventListener("submit", (e) => {
   e.preventDefault();
+
+  if (mode === "name") {
+    const name = $("nameInput").value.trim();
+    if (name.length < 2) {
+      showError("스트리머 이름을 두 글자 이상 입력해 주세요.");
+      return;
+    }
+    searchByName(name);
+    return;
+  }
+
   const id = Number($("idInput").value);
   if (!Number.isInteger(id) || id < 1) {
     showError("접수 번호를 올바르게 입력해 주세요.");
     return;
   }
+  $("searchResults").hidden = true;
   // 주소창에 남겨 새로고침·공유가 가능하게
   history.replaceState(null, "", `?id=${id}`);
   lookup(id);

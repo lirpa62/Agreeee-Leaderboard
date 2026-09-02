@@ -1005,6 +1005,11 @@ body[data-ui="xp"] .xp-task:hover {
   filter: brightness(1.14);
 }
 
+/* 작업 표시줄의 링크형 버튼 (제출 상태 조회) */
+body[data-ui="xp"] .xp-task-link {
+  text-decoration: none;
+}
+
 body[data-ui="xp"] .xp-task.active {
   background: linear-gradient(180deg, #1b4fae 0%, #2f6fd8 100%);
   box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.45);
