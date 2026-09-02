@@ -1159,7 +1159,7 @@ function renderRanking() {
     }
 
     li.innerHTML = `
-                <div style="display:flex; align-items:center;">
+                <div class="rank-main">
                     <span class="rank-badge ${badgeClass}">${badgeContent}</span>
                     <div class="rank-info">
                         <span class="rank-name" style="color:${data.color}">${data.name}</span>

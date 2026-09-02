@@ -301,6 +301,8 @@ h2 {
 .rank-badge {
   background-color: #6c757d;
   color: white;
+  /* 자리가 부족해도 뱃지는 찌그러지지 않게 */
+  flex-shrink: 0;
   width: 24px;
   height: 24px;
   border-radius: 50%;
@@ -366,9 +368,21 @@ h2 {
   margin-top: 0;
 }
 
+/* 뱃지 + 이름/상세 묶음. 총합 시간에 자리를 양보하도록 줄어들 수 있어야 합니다. */
+.rank-main {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+
 .rank-info {
   display: flex;
   flex-direction: column;
+  /* flex 아이템은 기본 min-width:auto 라 내용이 길면 줄어들지 않습니다.
+     0 으로 두어야 총합 시간이 들어갈 자리를 양보합니다. */
+  min-width: 0;
+  flex: 1 1 auto;
 }
 .rank-name {
   font-weight: bold;
@@ -378,12 +392,22 @@ h2 {
   font-size: 0.7rem;
   color: #007bff;
   letter-spacing: -0.5px;
+  /* 총합 시간은 '3시간 41분 20초'처럼 길어도 한 줄로 유지합니다. */
+  white-space: nowrap;
+  flex: 0 0 auto;
+  margin-left: 8px;
+  text-align: right;
 }
 .rank-detail {
   font-size: 0.7rem;
   color: #888;
   margin-top: 2px;
   letter-spacing: -0.5px;
+  /* '막트 전체: ... / 약관: ...' 도 어색하게 끊기지 않게 한 줄로 두고,
+     칸이 모자라면 말줄임으로 처리합니다. */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bottom-section {
