@@ -165,3 +165,68 @@ Discord 알림에도 승인/취소마다 미발행 건수가 함께 표시되어
   (관리자 화면에도 그렇게 안내됩니다)
 - 승인 취소는 발행 여부와 무관하게 항상 발행 대상이 됩니다.
   이미 발행된 기록을 취소하면 '삭제'가 새 변경으로 잡혀 다시 미발행이 됩니다.
+
+## 자동 배포 (GitHub 웹훅)
+
+푸시할 때마다 서버에 SSH 로 들어가 `git pull` + 재시작을 하지 않아도
+되도록, GitHub push 웹훅을 받아 서버가 스스로 갱신하게 할 수 있습니다.
+
+**설정 방법**
+
+1. 시크릿을 만들어 `.env` 에 넣습니다.
+
+```bash
+openssl rand -hex 32          # 출력값을 아래 두 곳에 같이 사용
+```
+
+```ini
+GITHUB_WEBHOOK_SECRET=<위에서 만든 값>
+DEPLOY_BRANCH=main
+```
+
+2. `sudo` 비밀번호 없이 재시작할 수 있게 허용합니다.
+
+```bash
+echo "$USER ALL=(root) NOPASSWD: /bin/systemctl restart agreeee-server" \
+  | sudo tee /etc/sudoers.d/agreeee-deploy
+sudo chmod 440 /etc/sudoers.d/agreeee-deploy
+```
+
+3. GitHub 저장소 → Settings → Webhooks → **Add webhook**
+
+| 항목 | 값 |
+| --- | --- |
+| Payload URL | `https://<도메인>/api/deploy` |
+| Content type | `application/json` |
+| Secret | 1번에서 만든 값 |
+| Events | Just the push event |
+
+4. 서버를 재시작하면 적용됩니다.
+
+**동작**
+
+- 서명(`X-Hub-Signature-256`)을 검증해 GitHub 이 보낸 요청만 처리합니다.
+  **`GITHUB_WEBHOOK_SECRET` 이 없으면 엔드포인트 자체가 등록되지 않습니다.**
+- `DEPLOY_BRANCH` 가 아닌 브랜치 푸시는 무시합니다.
+- `git fetch` 후 **rebase** 로 받습니다. 서버가 발행하며 만든 커밋이
+  아직 푸시되지 않았을 수 있어 단순 pull 은 분기 상태에서 실패합니다.
+- `server/` 가 바뀐 경우에만 재시작하고, `package.json` 이 바뀌었으면
+  `npm ci` 를 먼저 실행합니다. 정적 파일만 바뀌었다면 아무것도 하지 않습니다.
+- 동시 실행을 막기 위해 `flock` 으로 잠급니다.
+
+**수동 실행**
+
+```bash
+bash ~/agreeee_leaderboard/server/deploy/auto-deploy.sh
+```
+
+## Netlify 배포 건너뛰기
+
+이 저장소에는 공개 리더보드와 서버가 함께 있습니다. `server/` 만 바뀐
+커밋까지 배포하면 크레딧이 낭비되므로(1 deploy = 15 credits),
+루트의 `netlify.toml` 에서 그런 커밋의 빌드를 건너뜁니다.
+
+건너뛰는 경로: `server/`, `screenshots/`, `README.md`,
+`THIRD_PARTY_NOTICES.md`, `LICENSE`, `LICENSES/`, `.github/`
+
+`data.js` 나 `index.html` 등 공개 사이트 파일이 하나라도 바뀌면 정상 배포됩니다.

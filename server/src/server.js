@@ -9,6 +9,7 @@ require("dotenv").config();
 
 const path = require("path");
 const crypto = require("crypto");
+const { execFile } = require("child_process");
 const express = require("express");
 
 const db = require("./db");
@@ -44,8 +45,13 @@ if (ADMIN_PASSWORD === "change-me") {
 }
 
 app.set("trust proxy", 1);
-app.use(express.json({ limit: "32kb" }));
-app.use(express.urlencoded({ extended: false, limit: "32kb" }));
+// ⚠ /api/deploy 는 GitHub 서명 검증에 원본 바이트가 필요하므로
+//   전역 JSON 파서를 건너뛰게 합니다. (파싱되면 서명이 깨집니다)
+const skipDeploy = (mw) => (req, res, next) =>
+  req.path === "/api/deploy" ? next() : mw(req, res, next);
+
+app.use(skipDeploy(express.json({ limit: "32kb" })));
+app.use(skipDeploy(express.urlencoded({ extended: false, limit: "32kb" })));
 
 /**
  * CORS — 제출 폼은 Netlify(정적)에서, API 는 이 서버에서 서빙되므로
@@ -687,6 +693,76 @@ function requireAdminPage(req, res, next) {
   if (PUBLIC_ADMIN_FILES.has(req.path)) return next();
   if (verifyToken(parseCookies(req).admin)) return next();
   res.redirect("/admin/login.html");
+}
+
+/**
+ * GitHub push 웹훅 — 푸시되면 서버가 스스로 갱신합니다.
+ *
+ * ⚠ 명령을 실행하는 엔드포인트이므로 서명 검증이 필수입니다.
+ *   GITHUB_WEBHOOK_SECRET 이 없으면 아예 등록하지 않습니다.
+ *
+ * GitHub 저장소 → Settings → Webhooks → Add webhook
+ *   Payload URL  : https://<도메인>/api/deploy
+ *   Content type : application/json
+ *   Secret       : GITHUB_WEBHOOK_SECRET 과 동일한 값
+ *   Events       : Just the push event
+ */
+const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || "";
+
+if (GITHUB_WEBHOOK_SECRET) {
+  // 서명 검증에 원본 바이트가 필요하므로 이 경로만 raw 로 받습니다.
+  app.post(
+    "/api/deploy",
+    express.raw({ type: "*/*", limit: "5mb" }),
+    (req, res) => {
+      const sig = req.get("X-Hub-Signature-256") || "";
+      const expected =
+        "sha256=" +
+        crypto
+          .createHmac("sha256", GITHUB_WEBHOOK_SECRET)
+          .update(req.body)
+          .digest("hex");
+
+      const a = Buffer.from(sig);
+      const b = Buffer.from(expected);
+      if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        console.warn("[배포] 서명 검증 실패 — 요청을 거부했습니다.");
+        return res.status(401).json({ ok: false, error: "invalid signature" });
+      }
+
+      // 푸시 이벤트만 처리 (ping 등은 200 으로 받아넘김)
+      const event = req.get("X-GitHub-Event");
+      if (event !== "push") {
+        return res.json({ ok: true, skipped: event });
+      }
+
+      let branch = "";
+      try {
+        branch = String(JSON.parse(req.body.toString("utf8")).ref || "");
+      } catch {
+        /* 본문을 못 읽어도 배포는 진행합니다 */
+      }
+      // 기본 브랜치가 아니면 무시합니다.
+      const target = process.env.DEPLOY_BRANCH || "main";
+      if (branch && branch !== `refs/heads/${target}`) {
+        return res.json({ ok: true, skipped: branch });
+      }
+
+      // 응답을 먼저 보내고 백그라운드로 실행합니다.
+      // (GitHub 은 10초 안에 응답이 없으면 실패로 표시합니다)
+      res.json({ ok: true, started: true });
+
+      const script = path.join(__dirname, "..", "deploy", "auto-deploy.sh");
+      execFile("bash", [script], { timeout: 180000 }, (err, stdout, stderr) => {
+        const out = String(stdout || "").trim();
+        if (out) console.log(out);
+        if (err) {
+          console.error(`[배포] 실패: ${err.message}`);
+          if (stderr) console.error(String(stderr).trim());
+        }
+      });
+    },
+  );
 }
 
 app.get("/health", (req, res) => res.json({ ok: true }));

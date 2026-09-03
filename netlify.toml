@@ -1,0 +1,41 @@
+# Netlify 설정
+#
+# 이 저장소에는 공개 리더보드(정적 파일)와 제출·검토 서버(server/)가
+# 함께 들어 있습니다. server/ 만 바뀐 커밋까지 배포하면 배포 크레딧이
+# 낭비되므로(1 deploy = 15 credits), 그런 커밋은 빌드를 건너뜁니다.
+
+[build]
+  # 빌드 과정이 없는 순수 정적 사이트입니다.
+  publish = "."
+
+  # 종료 코드 0 이면 "빌드 취소", 1 이면 "빌드 진행" 입니다.
+  #   - git diff 로 이번 배포에 포함된 변경 파일을 확인하고
+  #   - 공개 사이트와 무관한 경로(server/, screenshots/, 문서 등)만
+  #     바뀌었다면 배포를 건너뜁니다.
+  # $CACHED_COMMIT_REF : 지난 성공 배포의 커밋
+  # $COMMIT_REF        : 이번 커밋
+  ignore = """
+    git diff --quiet $CACHED_COMMIT_REF $COMMIT_REF -- \
+      . ':(exclude)server/**' ':(exclude)screenshots/**' \
+      ':(exclude)README.md' ':(exclude)THIRD_PARTY_NOTICES.md' \
+      ':(exclude)LICENSE' ':(exclude)LICENSES/**' ':(exclude).github/**'
+  """
+
+# 정적 자산 캐시 — data.js 는 기록이 바뀌므로 캐시하지 않습니다.
+[[headers]]
+  for = "/data.js"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# 관리자 화면은 OCI 서버가 서빙합니다. Netlify 에는 존재하지 않으므로
+# 검색엔진이 훑지 않도록 막아 둡니다.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
