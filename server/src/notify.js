@@ -141,9 +141,11 @@ function notifyReviewed(sub, action, extra = {}) {
   if (!isEnabled()) return;
 
   const meta = {
-    approved: { title: "✅ 승인 — 리더보드 반영", color: COLORS.success },
+    // 승인은 data.js 수정까지이고, 리더보드 반영은 '발행' 이후입니다.
+    approved: { title: "✅ 승인 — 발행 대기", color: COLORS.success },
     rejected: { title: "🚫 반려", color: COLORS.danger },
     reverted: { title: "↩️ 승인 취소 — 기록 삭제", color: COLORS.danger },
+    reopened: { title: "🔄 대기로 되돌림 — 재검토", color: COLORS.warning },
   }[action] || { title: action, color: COLORS.info };
 
   const fields = [
@@ -229,14 +231,16 @@ function recordRejection(kind) {
 function notifyPublished(result, items) {
   if (!isEnabled()) return;
 
-  const added = items.filter((i) => i.status === "approved");
-  const removed = items.filter((i) => i.revert_reason);
+  // 승인취소와 '대기로 되돌리기' 모두 data.js 에서 제거된 건입니다.
+  const isRemoval = (i) => i.revert_reason || i.reopened_from_published;
+  const added = items.filter((i) => !isRemoval(i));
+  const removed = items.filter(isRemoval);
 
   const list = items
     .slice(0, 15)
     .map(
       (s) =>
-        `${s.revert_reason ? "➖" : "➕"} ${s.streamer_name} (${s.game_time})`,
+        `${isRemoval(s) ? "➖" : "➕"} ${s.streamer_name} (${s.game_time})`,
     )
     .join("\n");
 

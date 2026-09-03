@@ -533,11 +533,18 @@ app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => 
     // 아직 발행 전이었다면 추가·삭제가 상쇄되므로 발행할 것이 없습니다.
     db.reopenSubmission(sub.id, String(req.body?.note || ""), wasPublished);
 
+    const unpublished = db.countUnpublished();
+    notify.notifyReviewed(sub, "reopened", {
+      note: req.body?.note,
+      // 발행 전이었다면 추가·삭제가 상쇄되어 발행할 것이 없습니다.
+      unpublished: wasPublished ? unpublished : 0,
+    });
+
     res.json({
       ok: true,
       reverted,
       wasPublished,
-      unpublished: db.countUnpublished(),
+      unpublished,
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
