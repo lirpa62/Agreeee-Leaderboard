@@ -11,6 +11,14 @@ const API_BASE = (() => {
 
 const $ = (id) => document.getElementById(id);
 
+/**
+ * 상태 문구.
+ *
+ * ⚠ '승인'과 '리더보드 반영'은 다른 단계입니다.
+ *   승인 시에는 data.js 만 수정해 두고, 관리자가 모아서 '발행'해야
+ *   실제 배포가 이뤄집니다. (Netlify 배포 크레딧을 아끼기 위함)
+ *   그래서 승인됐지만 아직 발행되지 않은 상태를 따로 안내합니다.
+ */
 const STATUS_TEXT = {
   pending: {
     label: "검토 대기",
@@ -20,7 +28,12 @@ const STATUS_TEXT = {
   approved: {
     label: "승인 완료",
     cls: "approved",
-    msg: "리더보드에 반영되었습니다. 반영까지 몇 분 정도 걸릴 수 있습니다.",
+    msg: "승인되었습니다. 리더보드 반영을 기다리고 있습니다.\n기록은 모아서 한 번에 반영되므로 시간이 걸릴 수 있습니다.",
+  },
+  published: {
+    label: "반영 완료",
+    cls: "approved",
+    msg: "리더보드에 반영되었습니다. 확인해 보세요!",
   },
   rejected: {
     label: "반려",
@@ -28,6 +41,12 @@ const STATUS_TEXT = {
     msg: "등록되지 않았습니다.",
   },
 };
+
+/** 실제 표시할 상태 키 (승인됐지만 미발행이면 'approved') */
+function displayStatus(row) {
+  if (row.status === "approved" && row.published_at) return "published";
+  return row.status;
+}
 
 const REVERT_REASON = {
   casual: "캐주얼 모드 사용이 확인되어 기록이 삭제되었습니다.",
@@ -61,7 +80,7 @@ async function lookup(id) {
     }
 
     const r = json.submission;
-    const info = STATUS_TEXT[r.status] || STATUS_TEXT.pending;
+    const info = STATUS_TEXT[displayStatus(r)] || STATUS_TEXT.pending;
 
     $("statusBadge").textContent = info.label;
     $("statusBadge").className = `status-badge ${info.cls}`;
@@ -83,6 +102,14 @@ async function lookup(id) {
       $("rReviewedRow").hidden = false;
     } else {
       $("rReviewedRow").hidden = true;
+    }
+
+    // 실제 리더보드에 반영된 시각 (발행 시점)
+    if (r.published_at) {
+      $("rPublished").textContent = r.published_at;
+      $("rPublishedRow").hidden = false;
+    } else {
+      $("rPublishedRow").hidden = true;
     }
 
     // 승인 취소된 경우 사유를 함께 안내
@@ -162,7 +189,7 @@ async function searchByName(name) {
       tm.textContent = r.game_time;
 
       // 상태는 보여주되, 반려 사유는 접수 번호로만 확인할 수 있습니다.
-      const info = STATUS_TEXT[r.status] || STATUS_TEXT.pending;
+      const info = STATUS_TEXT[displayStatus(r)] || STATUS_TEXT.pending;
       const st = document.createElement("span");
       st.className = `status-badge ${info.cls}`;
       st.textContent = info.label;

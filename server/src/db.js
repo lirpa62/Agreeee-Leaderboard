@@ -235,7 +235,7 @@ function getPublicStatus(id) {
     .prepare(
       `SELECT id, kind, status, streamer_name, game_time, tos_time,
               is_shortcut, is_retry, is_casual,
-              created_at, reviewed_at, revert_reason
+              created_at, reviewed_at, revert_reason, published_at
        FROM submissions WHERE id = ?`,
     )
     .get(id);
@@ -257,7 +257,8 @@ function findByName(name) {
   return db
     .prepare(
       `SELECT id, kind, status, streamer_name, game_time, tos_time,
-              is_shortcut, is_retry, is_casual, created_at, reviewed_at
+              is_shortcut, is_retry, is_casual, created_at, reviewed_at,
+              published_at
        FROM submissions
        WHERE streamer_name LIKE ?
        ORDER BY

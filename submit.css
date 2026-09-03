@@ -522,6 +522,12 @@ body {
   padding: 12px;
 }
 
+/* ⚠ display:flex 는 hidden 속성을 덮어씁니다.
+   아래 [hidden] 규칙이 없으면 숨긴 행의 라벨이 그대로 보입니다. */
+.field-row[hidden] {
+  display: none;
+}
+
 .field-row {
   display: flex;
   gap: 10px;
@@ -546,6 +552,8 @@ body {
   background: var(--xp-face-alt);
   font-size: 12px;
   line-height: 1.65;
+  /* 안내 문구의 줄바꿈을 그대로 반영 */
+  white-space: pre-line;
 }
 
 /* ── 캡차 ────────────────────────────────────────────── */
