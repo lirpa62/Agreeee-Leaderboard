@@ -654,7 +654,7 @@ h2 {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1240px) {
   /* 좌우 분할(차트 | 명예의 전당)을 상하로 */
   .content-wrapper {
     flex-direction: column;
@@ -666,6 +666,9 @@ h2 {
   .rank-section {
     flex: none;
     width: 100%;
+    /* 세로 배치에서는 각자 자기 높이를 갖습니다.
+       (가로 배치용 flex 비율이 남아 있으면 찌그러집니다) */
+    min-height: 0;
   }
 
   /* 차트는 가로 스크롤 컨테이너 안에서 원래 폭을 유지합니다.

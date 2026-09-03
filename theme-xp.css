@@ -1143,47 +1143,96 @@ body[data-ui="xp"] .container.minimized {
   }
 }
 
-@media (max-width: 900px) {
-  /* 작업 표시줄은 화면을 크게 잡아먹고 터치 대상도 작아 숨깁니다.
-     대신 UI 전환 토글만 남겨 구버전으로 갈 수 있게 합니다. */
-  body[data-ui="xp"] .xp-taskbar {
-    position: static;
+@media (max-width: 1240px) {
+  /* ⚠ body[data-ui="xp"] .content-wrapper 의 height:790px 는
+     index.css 의 미디어쿼리보다 선택자 우선순위가 높습니다.
+     여기서 함께 풀지 않으면 세로 배치 시 내용이 넘쳐
+     아래 섹션들과 겹칩니다. */
+  body[data-ui="xp"] .content-wrapper {
+    flex-direction: column;
     height: auto;
-    min-width: 0;
-    padding: 8px 10px;
-    justify-content: center;
-    background: rgba(0, 0, 0, 0.25);
-    border-top: none;
-    box-shadow: none;
+    gap: 14px;
   }
 
-  body[data-ui="xp"] .xp-start,
-  body[data-ui="xp"] .xp-task,
-  body[data-ui="xp"] .xp-tray {
+  /* 작업 표시줄은 유지하되 터치에 맞게 키웁니다.
+     Luna 색감과 시작 버튼은 그대로 두어 분위기를 지킵니다. */
+  body[data-ui="xp"] .xp-taskbar {
+    min-width: 0;
+    height: 46px;
+    gap: 6px;
+    padding-right: 6px;
+    /* 창 버튼이 많아지면 가로로 밀어볼 수 있게 */
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  body[data-ui="xp"] .xp-taskbar::-webkit-scrollbar {
     display: none;
+  }
+
+  body[data-ui="xp"] {
+    padding-bottom: 52px;
+  }
+
+  body[data-ui="xp"] .xp-start {
+    flex: 0 0 auto;
+    height: 100%;
+    padding: 0 16px 0 10px;
+    font-size: 0.9rem;
+  }
+
+  body[data-ui="xp"] .xp-start-orb {
+    width: 20px;
+    height: 20px;
+  }
+
+  /* 창 버튼: 라벨을 줄이고 터치 영역을 키웁니다 */
+  body[data-ui="xp"] .xp-task {
+    flex: 0 0 auto;
+    height: 34px;
+    max-width: 116px;
+    padding: 0 10px;
+    font-size: 0.72rem;
+    border-radius: 4px;
+  }
+
+  /* 좁은 화면에서 트레이는 시계만 남깁니다 */
+  body[data-ui="xp"] .xp-tray {
+    flex: 0 0 auto;
+    padding: 0 8px;
+    font-size: 0.72rem;
   }
 
   body[data-ui="xp"] .ui-switch {
-    position: static;
-    margin: 0;
-    height: 40px;
-    padding: 0 16px;
+    flex: 0 0 auto;
+    height: 34px;
+    padding: 0 12px;
+    font-size: 0.72rem;
   }
 
-  /* 작업 표시줄을 고정 해제했으므로 하단 여백도 제거 */
-  body[data-ui="xp"] {
-    padding-bottom: 0;
+  /* 창 버튼(_ □ ✕)은 유지하되 손가락으로 누를 수 있게 키웁니다.
+     (XP 창 느낌의 핵심이라 숨기지 않습니다) */
+  body[data-ui="xp"] .xp-titlebar {
+    height: 38px;
+    padding-right: 6px;
   }
 
-  /* 섹션 창 버튼(_ □ ✕)은 터치로 누르기엔 너무 작습니다.
-     타이틀바를 눌러 접는 동작은 그대로 쓸 수 있습니다. */
-  body[data-ui="xp"] .section-title .xp-btns {
-    display: none;
+  body[data-ui="xp"] .xp-btn {
+    width: 30px;
+    height: 28px;
+    font-size: 13px;
   }
 
-  /* 메인 창 타이틀바의 버튼도 숨김 (최소화/닫기는 모바일에서 무의미) */
+  body[data-ui="xp"] .section-title .xp-btn {
+    width: 28px;
+    height: 26px;
+    font-size: 12px;
+  }
+
+  /* 메인 창 버튼은 긴 제목에 밀리지 않게 고정 */
   body[data-ui="xp"] .container > .xp-titlebar .xp-btns {
-    display: none;
+    flex: 0 0 auto;
   }
 
   body[data-ui="xp"] .xp-window-body {
