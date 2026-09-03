@@ -1120,3 +1120,120 @@ body[data-ui="xp"] .xp-infobox.xp-only {
 body[data-ui="xp"] .container.minimized {
   display: none;
 }
+
+/* =========================================================
+   반응형 (모바일) — XP 테마
+   ---------------------------------------------------------
+   XP 데스크톱 은유는 마우스를 전제로 합니다. 모바일에서는
+   창 버튼·작업 표시줄처럼 터치에 맞지 않는 요소를 정리하고,
+   창 프레임과 색감은 그대로 유지해 분위기를 지킵니다.
+   ========================================================= */
+@media (max-width: 1460px) {
+  body[data-ui="xp"] {
+    min-width: 0;
+  }
+
+  /* 기본 규칙의 width:1440px 가 index.css 의 미디어쿼리보다
+     선택자 우선순위가 높아 여기서 함께 풀어줘야 합니다. */
+  body[data-ui="xp"] .container {
+    width: 100%;
+    max-width: 1440px;
+    margin: 0 auto;
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  /* 작업 표시줄은 화면을 크게 잡아먹고 터치 대상도 작아 숨깁니다.
+     대신 UI 전환 토글만 남겨 구버전으로 갈 수 있게 합니다. */
+  body[data-ui="xp"] .xp-taskbar {
+    position: static;
+    height: auto;
+    min-width: 0;
+    padding: 8px 10px;
+    justify-content: center;
+    background: rgba(0, 0, 0, 0.25);
+    border-top: none;
+    box-shadow: none;
+  }
+
+  body[data-ui="xp"] .xp-start,
+  body[data-ui="xp"] .xp-task,
+  body[data-ui="xp"] .xp-tray {
+    display: none;
+  }
+
+  body[data-ui="xp"] .ui-switch {
+    position: static;
+    margin: 0;
+    height: 40px;
+    padding: 0 16px;
+  }
+
+  /* 작업 표시줄을 고정 해제했으므로 하단 여백도 제거 */
+  body[data-ui="xp"] {
+    padding-bottom: 0;
+  }
+
+  /* 섹션 창 버튼(_ □ ✕)은 터치로 누르기엔 너무 작습니다.
+     타이틀바를 눌러 접는 동작은 그대로 쓸 수 있습니다. */
+  body[data-ui="xp"] .section-title .xp-btns {
+    display: none;
+  }
+
+  /* 메인 창 타이틀바의 버튼도 숨김 (최소화/닫기는 모바일에서 무의미) */
+  body[data-ui="xp"] .container > .xp-titlebar .xp-btns {
+    display: none;
+  }
+
+  body[data-ui="xp"] .xp-window-body {
+    padding: 12px 10px 16px;
+  }
+
+  body[data-ui="xp"] .bottom-section > *:not(.section-title) {
+    margin-left: 10px;
+    margin-right: 10px;
+  }
+
+  body[data-ui="xp"] .bottom-section > ul {
+    padding: 0 10px;
+  }
+
+  /* 최대화는 데스크톱 전용 동작이라 모바일에서는 무시 */
+  body[data-ui="xp"] .bottom-section.maximized,
+  body[data-ui="xp"] .casual-mode.maximized {
+    position: static;
+    inset: auto;
+    overflow: visible;
+  }
+
+  /* 약관 스크롤 박스는 조금 더 넉넉하게 */
+  body[data-ui="xp"] .xp-eula {
+    height: 120px;
+  }
+
+  body[data-ui="xp"] .chart-section::after {
+    color: #6b6b6b;
+  }
+}
+
+@media (max-width: 560px) {
+  /* 동의함/동의하지 않음 버튼줄이 넘치지 않도록 */
+  body[data-ui="xp"] .xp-agree-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  body[data-ui="xp"] .xp-button {
+    min-height: 40px;
+  }
+
+  body[data-ui="xp"] .xp-titlebar-text {
+    font-size: 0.76rem;
+  }
+
+  body[data-ui="xp"] .section-title {
+    font-size: 0.8rem;
+    padding: 8px 10px;
+  }
+}

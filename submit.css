@@ -606,3 +606,63 @@ body {
     width: 64px;
   }
 }
+
+/* =========================================================
+   모바일
+   ========================================================= */
+@media (max-width: 560px) {
+  body {
+    padding: 12px 10px 32px;
+  }
+
+  .xp-window {
+    border-radius: 0;
+  }
+
+  .xp-window-body {
+    padding: 14px 12px 18px;
+  }
+
+  /* iOS 는 16px 미만 입력에 포커스하면 화면을 자동 확대합니다.
+     확대되면 레이아웃이 틀어져 보이므로 16px 로 맞춥니다. */
+  .xp-input,
+  .lookup-row input,
+  #colorPicker {
+    font-size: 16px;
+    min-height: 42px;
+  }
+
+  .xp-input.time {
+    width: 68px;
+  }
+
+  /* 터치 대상 확보 */
+  .xp-button,
+  .lookup-tabs .tab,
+  .go-btn {
+    min-height: 44px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .actions .xp-button {
+    width: 100%;
+  }
+
+  .radio,
+  .check {
+    padding: 9px 0;
+  }
+
+  /* 검색 결과 항목이 좁은 화면에서 넘치지 않도록 */
+  .search-item {
+    flex-wrap: wrap;
+    gap: 6px 8px;
+  }
+
+  .search-name {
+    flex: 1 1 100%;
+  }
+}

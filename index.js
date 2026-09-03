@@ -886,8 +886,13 @@ function updateZoomHint() {
   const hidden = myChart.data.datasets[0].data.filter(
     (d) => d.x < xa.min || d.x > xa.max || d.y < ya.min || d.y > ya.max,
   ).length;
-  hint.textContent =
-    hidden > 0 ? `화면 밖 ${hidden}명 · 드래그로 이동` : "드래그로 이동";
+  // 모바일에서는 드래그 패닝 대신 컨테이너를 스크롤하므로 안내를 달리합니다.
+  const scroller = document.querySelector(".chart-scroll");
+  const isScrollMode =
+    scroller && scroller.scrollWidth > scroller.clientWidth;
+  const how = isScrollMode ? "좌우로 밀어서 보기" : "드래그로 이동";
+
+  hint.textContent = hidden > 0 ? `화면 밖 ${hidden}명 · ${how}` : how;
 }
 
 function applyXZoom() {
@@ -953,8 +958,19 @@ function applyXZoom() {
   // 더블클릭 초기화 직후의 잔여 mousedown/up 을 무시하기 위한 플래그
   let justReset = false;
 
+  /**
+   * 드래그 패닝 가능 여부.
+   *
+   * 모바일(가로 스크롤 컨테이너 안)에서는 패닝을 끕니다.
+   * 손가락 드래그는 컨테이너를 좌우로 스크롤하는 데 쓰여야 하고,
+   * 둘이 겹치면 어느 쪽도 제대로 동작하지 않습니다.
+   */
   function canPan() {
-    return isXpUi() && isXZoomed;
+    if (!isXpUi() || !isXZoomed) return false;
+    // 차트가 가로 스크롤 상태면(= 모바일 레이아웃) 패닝 대신 스크롤
+    const scroller = canvas.closest(".chart-scroll");
+    if (scroller && scroller.scrollWidth > scroller.clientWidth) return false;
+    return true;
   }
 
   function currentView() {

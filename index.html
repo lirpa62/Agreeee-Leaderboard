@@ -2,7 +2,9 @@
 <html lang="ko">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=1440, user-scalable=yes" />
+    <!-- 데스크톱은 1440px 고정 레이아웃이지만, 모바일에서는 실제 화면 폭을
+         따르게 해 세로 배치로 전환합니다. (index.css 의 @media 참고) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
       content="이용약관에 동의하고 싶어 게임 클리어 기록 리더보드입니다."
@@ -160,8 +162,12 @@
             </button>
             <span id="xZoomHint" class="chart-hint"></span>
           </div>
-          <div class="chart-canvas-wrap">
-            <canvas id="clearChart"></canvas>
+          <!-- 모바일에서는 이 컨테이너가 가로 스크롤됩니다.
+               111개 점의 산점도는 좁은 화면에 그대로 욱여넣으면 못 읽습니다. -->
+          <div class="chart-scroll">
+            <div class="chart-canvas-wrap">
+              <canvas id="clearChart"></canvas>
+            </div>
           </div>
         </div>
 

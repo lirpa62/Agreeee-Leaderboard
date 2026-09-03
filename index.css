@@ -634,3 +634,159 @@ h2 {
   transform: translateY(-2px);
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
 }
+
+/* =========================================================
+   반응형 (모바일 / 태블릿)
+   ---------------------------------------------------------
+   데스크톱은 1440px 고정 레이아웃을 그대로 유지하고,
+   아래 폭에서만 세로 배치로 전환합니다.
+   ========================================================= */
+@media (max-width: 1460px) {
+  body {
+    min-width: 0;
+    padding: 0;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 1440px;
+    border-radius: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  /* 좌우 분할(차트 | 명예의 전당)을 상하로 */
+  .content-wrapper {
+    flex-direction: column;
+    height: auto;
+    gap: 14px;
+  }
+
+  .chart-section,
+  .rank-section {
+    flex: none;
+    width: 100%;
+  }
+
+  /* 차트는 가로 스크롤 컨테이너 안에서 원래 폭을 유지합니다.
+     화면에 맞춰 줄이면 점과 라벨이 뭉개져 읽을 수 없습니다. */
+  .chart-scroll {
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    /* 세로 스크롤은 페이지에 넘기고 가로만 이 요소가 처리 */
+    touch-action: pan-x pan-y;
+  }
+
+  .chart-canvas-wrap {
+    width: 880px; /* 산점도가 읽히는 최소 폭 */
+    height: 460px;
+  }
+
+  .chart-section {
+    /* 스크롤 가능함을 알려주는 힌트 */
+    position: relative;
+  }
+
+  .chart-section::after {
+    content: "← 좌우로 밀어서 보기 →";
+    display: block;
+    padding-top: 6px;
+    font-size: 0.7rem;
+    color: #888;
+    text-align: center;
+  }
+
+  .rank-section {
+    height: 460px;
+  }
+
+  /* 목록형 리그는 한 줄에 하나씩 */
+  .retry-list,
+  .shortcut-list,
+  .speedrun-list,
+  .pending-list {
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 12px;
+  }
+
+  .retry-item,
+  .shortcut-item,
+  .speedrun-item,
+  .pending-item {
+    width: 100%;
+  }
+
+  /* 섹션 제목이 길어 넘칠 때 줄바꿈 허용 */
+  .section-title {
+    flex-wrap: wrap;
+    gap: 8px;
+    font-size: 1rem;
+  }
+
+  .notice,
+  .rank-subtitle {
+    font-size: 0.75rem;
+  }
+
+  /* 인라인 style 로 좌우 여백이 걸린 설명문들 */
+  .bottom-section > div[style],
+  .casual-mode ul {
+    margin-left: 12px !important;
+    margin-right: 12px !important;
+  }
+
+  .bottom-section img {
+    width: min(300px, 90%);
+  }
+
+  /* 스크롤 유도 화살표는 모바일에서 자리만 차지합니다 */
+  .scroll-indicator {
+    display: none;
+  }
+}
+
+@media (max-width: 560px) {
+  .container {
+    padding: 0;
+  }
+
+  h2 {
+    font-size: 1.05rem;
+    padding: 0 10px;
+  }
+
+  .chart-canvas-wrap {
+    width: 720px;
+    height: 400px;
+  }
+
+  .rank-section {
+    height: 400px;
+  }
+
+  /* 터치 대상은 최소 40px 이상 확보 */
+  .request-btn,
+  .expand-btn,
+  .chart-ctrl-btn {
+    min-height: 40px;
+    padding: 10px 18px;
+  }
+
+  .search-input-container {
+    height: 34px;
+  }
+
+  .search-input {
+    font-size: 16px; /* iOS 자동 확대 방지 */
+  }
+
+  .rank-item {
+    padding: 12px 10px;
+  }
+
+  .casual-mode ul {
+    padding-left: 4px;
+  }
+}
