@@ -954,3 +954,11 @@ h2 {
   text-align: center;
   flex: 0 0 auto;
 }
+
+/* 모든 항목이 비활성일 때, 왜 비활성인지 알려 주는 안내 */
+.xp-menu-note {
+  padding: 4px 10px 5px;
+  color: #8a8a8a;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}

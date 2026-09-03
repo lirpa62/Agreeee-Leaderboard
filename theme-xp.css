@@ -1426,6 +1426,11 @@ body[data-ui="xp"] .xp-menu-item:hover:not(:disabled) {
   background: var(--xp-highlight);
 }
 
+body[data-ui="xp"] .xp-menu-note {
+  font-family: var(--xp-font);
+  font-size: 10px;
+}
+
 body[data-ui="xp"] .new-badge {
   font-family: var(--xp-font);
   font-size: 10px;

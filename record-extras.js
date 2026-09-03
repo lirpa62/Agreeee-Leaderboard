@@ -87,10 +87,6 @@ function openMenu(x, y, item) {
     { label: "제출한 다시보기 보기", url: item.vodUrl, icon: "📼" },
   ];
 
-  // 링크가 하나도 없는 기록(기존 209건)은 메뉴를 띄우지 않고
-  // 브라우저 기본 메뉴를 그대로 쓰게 둡니다.
-  if (!entries.some((e) => e.url)) return false;
-
   const rows = entries
     .map((e) => {
       // XP 는 쓸 수 없는 메뉴를 숨기지 않고 회색으로 남겨 둡니다.
@@ -103,10 +99,19 @@ function openMenu(x, y, item) {
     })
     .join("");
 
+  // 링크가 하나도 없는 기록(네이버 폼으로 받던 시절의 기존 기록)은
+  // 메뉴가 전부 회색이라 고장난 것처럼 보입니다. 이유를 덧붙입니다.
+  const noneUsable = !entries.some((e) => e.url);
+  const footer = noneUsable
+    ? `<div class="xp-menu-sep"></div>` +
+      `<div class="xp-menu-note">등록된 링크가 없는 기록입니다.</div>`
+    : "";
+
   el.innerHTML =
     `<div class="xp-menu-title">${escapeHtml(item.name)}</div>` +
     `<div class="xp-menu-sep"></div>` +
-    rows;
+    rows +
+    footer;
 
   placeMenu(el, x, y);
   return true;
