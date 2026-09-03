@@ -1153,6 +1153,13 @@ function getDisplayData() {
   return assignLabelRank(finalData.sort((a, b) => a.totalMin - b.totalMin));
 }
 
+/**
+ * 각 목록이 '마지막으로 그린 데이터 배열'.
+ * 목록은 검색·펼치기에 따라 걸러지거나 잘리므로,
+ * 우클릭한 li 를 원본 항목으로 되돌리려면 그린 순서 그대로가 필요합니다.
+ */
+const renderedLists = {};
+
 function renderRanking() {
   const listContainer = document.getElementById("rankList");
   listContainer.innerHTML = "";
@@ -1161,9 +1168,13 @@ function renderRanking() {
 
   let rankCounter = 0;
 
+  // 우클릭 메뉴가 li → 데이터를 되찾을 수 있도록 이번에 그린 목록을 기억합니다.
+  renderedLists.rankList = displayData;
+
   displayData.forEach((data, index) => {
     const li = document.createElement("li");
     li.className = "rank-item";
+    li.dataset.idx = String(index);
 
     let badgeContent = "";
     let badgeClass = "";
@@ -1185,7 +1196,7 @@ function renderRanking() {
                 <div class="rank-main">
                     <span class="rank-badge ${badgeClass}">${badgeContent}</span>
                     <div class="rank-info">
-                        <span class="rank-name" style="color:${data.color}">${data.name}</span>
+                        <span class="rank-name-row"><span class="rank-name" style="color:${data.color}">${data.name}</span>${newBadgeHtml(data)}</span>
                         <span class="rank-detail"><span class="detail-part">막트 전체: ${formatTime(data.y, false)}</span> <span class="detail-part">/ 약관: ${formatTime(data.x, false)}</span></span>
                     </div>
                 </div>
@@ -1326,13 +1337,16 @@ function renderRetries() {
   const listContainer = document.getElementById("retryList");
   listContainer.innerHTML = "";
 
+  renderedLists.retryList = sortedRetryData;
+
   sortedRetryData.forEach((data, index) => {
     const li = document.createElement("li");
     li.className = "retry-item list-item";
     li.style.borderLeft = `4px solid ${data.color}`;
+    li.dataset.idx = String(index);
 
     li.innerHTML = `
-                <span class="rank-badge">${index + 1}</span> <span style="font-weight:bold; color:${data.color}">${data.name}</span>
+                <span class="rank-badge">${index + 1}</span> <span style="font-weight:bold; color:${data.color}">${data.name}</span>${newBadgeHtml(data)}
                 <span style="color:#666; font-size:0.8em">(${data.gameTime}/${data.tosTime})</span>
                 <span style="font-weight:bold; font-size: 0.75rem">${formatTime(data.totalMin)}</span>
             `;
@@ -1406,14 +1420,17 @@ function renderSpeedrun() {
     : speedrunData.slice(0, DISPLAY_LIMIT);
 
   // 7. 렌더링
+  renderedLists.speedrunList = finalData;
+
   finalData.forEach((data, index) => {
     const li = document.createElement("li");
     li.className = "speedrun-item";
     li.style.borderLeft = `4px solid ${data.color}`;
+    li.dataset.idx = String(index);
 
     li.innerHTML = `
         <span class="rank-badge">${index + 1}</span>
-        <span style="font-weight:bold; color:${data.color}">${data.name}</span>
+        <span style="font-weight:bold; color:${data.color}">${data.name}</span>${newBadgeHtml(data)}
         <span style="font-weight:bold; font-size: 0.85rem; margin-left: auto;">${formatTime(data.parsedGameTime, true)}</span>
     `;
 
@@ -1458,13 +1475,16 @@ function renderShortcuts() {
     ? sortedShortcutData
     : sortedShortcutData.slice(0, DISPLAY_LIMIT);
 
+  renderedLists.shortcutList = finalData;
+
   finalData.forEach((data, index) => {
     const li = document.createElement("li");
     li.className = "shortcut-item";
     li.style.borderLeft = `4px solid ${data.color}`;
+    li.dataset.idx = String(index);
 
     li.innerHTML = `
-                <span class="rank-badge">${index + 1}</span> <span style="font-weight:bold; color:${data.color}">${data.name}</span>
+                <span class="rank-badge">${index + 1}</span> <span style="font-weight:bold; color:${data.color}">${data.name}</span>${newBadgeHtml(data)}
                 <span style="color:#666; font-size:0.8em">(${data.gameTime}/${data.tosTime})</span>
                 <span style="font-weight:bold; font-size: 0.75rem">${formatTime(data.totalMin)}</span>
             `;
@@ -1590,6 +1610,24 @@ renderSpeedrun();
 renderShortcuts();
 renderRetries();
 applyXZoom(); // X축 확대 상태 및 안내 문구 초기화
+
+// 순위 항목 우클릭 메뉴 (채널/클립/다시보기 열기)
+initContextMenu();
+for (const id of ["rankList", "retryList", "speedrunList", "shortcutList"]) {
+  attachContextMenu(id, (li) => {
+    const list = renderedLists[id];
+    const idx = Number(li.dataset.idx);
+    return list && Number.isInteger(idx) ? list[idx] : null;
+  });
+}
+
+// 'NEW' 배지는 6시간이 지나면 사라져야 하므로 만료를 확인합니다.
+startBadgeExpiry(() => {
+  renderRanking();
+  renderSpeedrun();
+  renderShortcuts();
+  renderRetries();
+});
 
 // 리스트 생성 후 스크롤 상태 재확인 (DOM 높이 변경 반영)
 setTimeout(checkScroll, 100);

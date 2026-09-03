@@ -1396,3 +1396,38 @@ body[data-ui="xp"] .container.minimized {
     padding: 8px 10px;
   }
 }
+
+/* ---------------------------------------------------------
+   우클릭 메뉴 — Luna 마감
+   (index.css 의 기본형 위에 XP 폰트·베벨만 덧입힙니다)
+   --------------------------------------------------------- */
+body[data-ui="xp"] .xp-context-menu {
+  font-family: var(--xp-font);
+  font-size: 11px;
+  border: 1px solid var(--xp-shadow);
+  /* XP 메뉴는 흰 바탕에 왼쪽 아이콘 여백이 살짝 다른 색입니다 */
+  background: var(--xp-white);
+  box-shadow:
+    inset 1px 1px 0 #fff,
+    2px 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+body[data-ui="xp"] .xp-menu-title {
+  font-size: 11px;
+  color: var(--xp-text-dim);
+}
+
+body[data-ui="xp"] .xp-menu-item {
+  font-family: var(--xp-font);
+  font-size: 11px;
+}
+
+body[data-ui="xp"] .xp-menu-item:hover:not(:disabled) {
+  background: var(--xp-highlight);
+}
+
+body[data-ui="xp"] .new-badge {
+  font-family: var(--xp-font);
+  font-size: 10px;
+  border-radius: 2px;
+}

@@ -38,12 +38,26 @@ function readData(filePath = DATA_JS_PATH) {
   return { src, ...ctx.__out };
 }
 
-/** 항목 하나를 data.js 표기로 직렬화 (기존 포맷과 동일하게) */
+/**
+ * 항목 하나를 data.js 표기로 직렬화 (기존 포맷과 동일하게)
+ *
+ * name/gameTime/tosTime 은 기존 209건과 같은 필수 표기이고,
+ * addedAt 과 URL 들은 새 제출 파이프라인으로 들어온 건에만 붙습니다.
+ * (네이버 폼 시절 기록에는 없는 정보라 값이 있을 때만 씁니다)
+ */
 function serializeItem(item, indent = "  ") {
   const fields = [`name: ${JSON.stringify(item.name)}`];
   fields.push(`gameTime: ${JSON.stringify(item.gameTime)}`);
   if (item.tosTime !== undefined && item.tosTime !== null) {
     fields.push(`tosTime: ${JSON.stringify(item.tosTime)}`);
+  }
+  // 'NEW' 배지 판정용 등록 시각 (ISO 8601 UTC)
+  if (item.addedAt) {
+    fields.push(`addedAt: ${JSON.stringify(item.addedAt)}`);
+  }
+  // 우클릭 메뉴에서 여는 증빙 링크
+  for (const key of ["channelUrl", "clipUrl", "vodUrl"]) {
+    if (item[key]) fields.push(`${key}: ${JSON.stringify(item[key])}`);
   }
 
   // 한 줄에 담기면 한 줄로, 길면 여러 줄로 (기존 파일 스타일과 동일)
@@ -188,6 +202,13 @@ function applySubmission(submission, filePath = DATA_JS_PATH) {
 
   const item = { name: submission.name, gameTime: submission.gameTime };
   if (submission.tosTime) item.tosTime = submission.tosTime;
+
+  // 등록 시각과 증빙 링크. 승인 취소 시에는 이름+기록으로만 항목을 찾으므로
+  // 이 필드들이 붙어도 removeFromArray 의 매칭에는 영향이 없습니다.
+  item.addedAt = submission.addedAt || new Date().toISOString();
+  for (const key of ["channelUrl", "clipUrl", "vodUrl"]) {
+    if (submission[key]) item[key] = submission[key];
+  }
 
   let next = appendToArray(src, submission.arrayName, item);
   next = addColor(next, submission.name, submission.color);

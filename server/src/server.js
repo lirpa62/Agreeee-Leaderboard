@@ -469,6 +469,13 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
       tosTime: finalTosTime,
       color: sub.color,
       arrayName: dataFile.arrayNameFor(sub),
+      // 리더보드의 'NEW' 배지와 우클릭 메뉴에서 씁니다.
+      // 제출 시각이 아니라 승인 시각을 기준으로 해야
+      // 검토가 늦어져도 시청자에게 새 기록으로 보입니다.
+      addedAt: new Date().toISOString(),
+      channelUrl: sub.channel_url,
+      clipUrl: sub.clip_url,
+      vodUrl: sub.vod_url,
     });
 
     // 실제 등록된 값을 DB 에도 반영해 두어야

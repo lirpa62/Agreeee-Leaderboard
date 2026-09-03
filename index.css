@@ -828,3 +828,129 @@ h2 {
     padding-left: 4px;
   }
 }
+
+/* ---------------------------------------------------------
+   새 기록 'NEW' 배지
+   data.js 항목에 addedAt 이 있고 6시간 이내일 때만 붙습니다.
+   --------------------------------------------------------- */
+/* 명예의 전당의 .rank-info 는 세로 flex 라, 배지를 그냥 넣으면
+   flex 아이템으로 늘어나 가로 막대처럼 보입니다.
+   이름과 배지를 가로 한 줄로 묶어 줍니다. */
+.rank-name-row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+}
+.rank-name-row .rank-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.new-badge {
+  display: inline-block;
+  flex: 0 0 auto;
+  margin-left: 4px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: linear-gradient(180deg, #ff8a3d 0%, #f4600f 100%);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: bold;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+  vertical-align: middle;
+  /* 줄바꿈으로 이름과 떨어지지 않게 */
+  white-space: nowrap;
+  animation: new-badge-pulse 2s ease-in-out infinite;
+}
+
+@keyframes new-badge-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* 애니메이션을 원치 않는 사용자 설정을 존중합니다. */
+@media (prefers-reduced-motion: reduce) {
+  .new-badge {
+    animation: none;
+  }
+}
+
+/* ---------------------------------------------------------
+   순위 항목 우클릭 메뉴
+   --------------------------------------------------------- */
+.xp-context-menu {
+  position: fixed;
+  z-index: 10000;
+  min-width: 190px;
+  padding: 2px;
+  background: #fff;
+  border: 1px solid #aca899;
+  box-shadow: 2px 2px 6px rgba(0, 0, 0, 0.3);
+  font-size: 0.78rem;
+  user-select: none;
+}
+
+.xp-context-menu[hidden] {
+  display: none;
+}
+
+.xp-menu-title {
+  padding: 4px 10px 3px;
+  font-weight: bold;
+  color: #333;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.xp-menu-sep {
+  height: 1px;
+  margin: 2px 1px;
+  background: #dcdcdc;
+}
+
+.xp-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 5px 12px 5px 8px;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  color: #000;
+  text-align: left;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.xp-menu-item:hover:not(:disabled) {
+  background: #316ac5;
+  color: #fff;
+}
+
+.xp-menu-item:disabled {
+  color: #9a9a9a;
+  cursor: default;
+}
+
+/* 비활성 항목의 아이콘은 XP 처럼 흐리게 */
+.xp-menu-item:disabled .xp-menu-icon {
+  opacity: 0.4;
+}
+
+.xp-menu-icon {
+  width: 16px;
+  text-align: center;
+  flex: 0 0 auto;
+}
