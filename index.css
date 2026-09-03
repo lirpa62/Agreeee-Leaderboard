@@ -90,6 +90,9 @@ h2 {
 
 .chart-section {
   flex: 2.77;
+  /* 명예의 전당이 최소 폭을 지킬 수 있도록 차트가 먼저 양보합니다.
+     (flex 아이템 기본값 min-width:auto 면 줄어들지 못합니다) */
+  min-width: 0;
   position: relative;
   border: 1px solid #eee;
   border-radius: 10px;
@@ -165,6 +168,11 @@ h2 {
 
 .rank-section {
   flex: 1;
+  /* 1440px 기준 폭(약 376px)을 최소값으로 잡습니다.
+     flex 비율(2.77 : 1)만 두면 창이 좁아질수록 함께 줄어들어
+     이름과 기록이 한 줄에 들어가지 않습니다.
+     대신 차트가 남는 공간을 양보합니다. */
+  min-width: 376px;
   display: flex;
   flex-direction: column;
   border: 1px solid #eee;
@@ -682,6 +690,8 @@ h2 {
     /* 세로 배치에서는 각자 자기 높이를 갖습니다.
        (가로 배치용 flex 비율이 남아 있으면 찌그러집니다) */
     min-height: 0;
+    /* 가로 배치용 최소 폭은 해제 — 좁은 화면에서 넘칩니다 */
+    min-width: 0;
   }
 
   /* 차트는 가로 스크롤 컨테이너 안에서 원래 폭을 유지합니다.
