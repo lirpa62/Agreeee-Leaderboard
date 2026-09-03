@@ -367,6 +367,40 @@ app.post("/api/admin/submissions/:id/recheck", requireAdmin, async (req, res) =>
   });
   const channel = r.status === "exact" ? r.channel : null;
   const judged = judgeFollowers(sub.kind, channel?.followerCount ?? null, r.status);
+
+  // 검증 메모를 제출 시점과 같은 방식으로 다시 만듭니다.
+  // (판정 기준이 바뀌었어도 재조회 한 번으로 정리됩니다)
+  let note = "";
+  if (r.status !== "exact" && r.candidates?.length) {
+    note = `후보 ${r.candidates.length}개: ${r.candidates
+      .map((c) => `${c.channelName}(${c.followerCount ?? "?"})`)
+      .join(", ")}`;
+  }
+
+  const outlier = checkGameTimeOutlier(sub.game_time);
+  if (outlier) note = [note, outlier].filter(Boolean).join(" / ");
+
+  const nameCheck = compareNames(sub.streamer_name, channel?.channelName);
+  if (nameCheck.match === "different") {
+    note = [
+      note,
+      `⚠️ 이름 불일치: 입력 '${sub.streamer_name}' ↔ 채널 '${channel.channelName}'`,
+    ]
+      .filter(Boolean)
+      .join(" / ");
+  }
+
+  note = [note, judged.note].filter(Boolean).join(" / ");
+
+  // 화면에만 보여주지 않고 DB 에도 반영합니다.
+  db.updateVerification(sub.id, {
+    channelId: channel?.channelId,
+    channelName: channel?.channelName,
+    followerCount: channel?.followerCount,
+    verifyStatus: r.status,
+    verifyNote: note,
+  });
+
   res.json({
     ok: true,
     status: r.status,
@@ -374,6 +408,7 @@ app.post("/api/admin/submissions/:id/recheck", requireAdmin, async (req, res) =>
     candidates: r.candidates || [],
     verdict: judged.verdict,
     note: judged.note,
+    savedNote: note,
   });
 });
 

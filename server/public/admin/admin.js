@@ -423,11 +423,16 @@ listEl.addEventListener("click", async (e) => {
         json.channel?.followerCount != null
           ? `${json.channel.followerCount.toLocaleString()}명`
           : "조회 실패";
-      flash(
-        card,
-        json.verdict === "fail" ? "err" : "ok",
-        `재조회: ${json.channel?.channelName || "채널 확정 못함"} · ${fc} — ${json.note}`,
-      );
+      // 결과가 DB 에도 저장되므로 목록을 다시 불러와 배지·메모를 갱신합니다.
+      await load();
+      const fresh = document.querySelector(`.card[data-id="${id}"]`);
+      if (fresh) {
+        flash(
+          fresh,
+          json.verdict === "fail" ? "err" : "ok",
+          `재조회 완료: ${json.channel?.channelName || "채널 확정 못함"} · ${fc} — ${json.note}`,
+        );
+      }
       return;
     }
 

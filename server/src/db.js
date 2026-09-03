@@ -181,6 +181,32 @@ function updateApprovedRecord(id, name, gameTime, tosTime) {
 }
 
 /**
+ * 채널 재조회 결과를 저장합니다.
+ *
+ * verify_note 는 제출 시점에 한 번 계산해 저장하는 값이라,
+ * 판정 기준이 바뀌면 옛 문구가 그대로 남습니다.
+ * 재조회로 갱신할 수 있게 해 두면 기준 변경 후에도 정리가 됩니다.
+ * (관리자 화면의 '기준 충족' 배지도 이 문구를 보고 판단합니다)
+ */
+function updateVerification(id, { channelId, channelName, followerCount, verifyStatus, verifyNote }) {
+  return db
+    .prepare(
+      `UPDATE submissions
+       SET channel_id = ?, channel_name = ?, follower_count = ?,
+           verify_status = ?, verify_note = ?
+       WHERE id = ?`,
+    )
+    .run(
+      channelId ?? null,
+      channelName ?? null,
+      followerCount ?? null,
+      verifyStatus ?? null,
+      verifyNote ?? null,
+      id,
+    );
+}
+
+/**
  * 승인 취소 — 상태를 되돌리고 사유를 남깁니다.
  *
  * ⚠ published_at 을 반드시 NULL 로 되돌려야 합니다.
@@ -311,6 +337,7 @@ module.exports = {
   setStatus,
   updateStreamerName,
   updateApprovedRecord,
+  updateVerification,
   revertApproval,
   getPublicStatus,
   findByName,
