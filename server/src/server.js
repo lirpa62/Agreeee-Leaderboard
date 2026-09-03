@@ -558,9 +558,19 @@ app.post("/api/admin/publish", requireAdmin, async (req, res) => {
 
 // 관리자 화면 (정적)
 app.use("/admin", requireAdminPage, express.static(path.join(__dirname, "..", "public", "admin")));
+/**
+ * 로그인 페이지와 그 페이지가 필요로 하는 정적 자원은 인증 없이 통과시킵니다.
+ * (스타일·파비콘까지 막으면 로그인 화면이 깨진 채로 보입니다)
+ */
+const PUBLIC_ADMIN_FILES = new Set([
+  "/login.html",
+  "/login.js",
+  "/admin.css",
+  "/favicon.png",
+]);
+
 function requireAdminPage(req, res, next) {
-  // 로그인 페이지는 통과
-  if (req.path === "/login.html" || req.path === "/login.js") return next();
+  if (PUBLIC_ADMIN_FILES.has(req.path)) return next();
   if (verifyToken(parseCookies(req).admin)) return next();
   res.redirect("/admin/login.html");
 }

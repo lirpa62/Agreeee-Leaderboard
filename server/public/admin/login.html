@@ -3,30 +3,63 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/png" href="favicon.png" />
     <title>관리자 로그인 - 리더보드</title>
     <link rel="stylesheet" href="admin.css" />
   </head>
   <body class="login-page">
+    <!-- XP 로그온 화면 느낌의 배너 -->
+    <div class="logon-brand">
+      <span class="logon-logo">📜</span>
+      <div>
+        <div class="logon-title">이용약관에 동의하고 싶어</div>
+        <div class="logon-sub">리더보드 관리자</div>
+      </div>
+    </div>
+
     <form class="xp-window login-box" id="loginForm">
       <div class="xp-titlebar">
         <span class="xp-titlebar-icon">🔒</span>
         <span class="xp-titlebar-text">관리자 로그인</span>
       </div>
+
       <div class="xp-window-body">
-        <p class="login-msg">관리자 비밀번호를 입력하세요.</p>
-        <input
-          type="password"
-          id="password"
-          class="xp-input"
-          autocomplete="current-password"
-          required
-        />
-        <p class="error" id="error"></p>
-        <div class="row-end">
-          <button type="submit" class="xp-button">확인</button>
+        <div class="login-row">
+          <span class="login-avatar">👤</span>
+          <div class="login-fields">
+            <label class="login-label" for="password">비밀번호</label>
+            <div class="login-input-wrap">
+              <input
+                type="password"
+                id="password"
+                class="xp-input"
+                autocomplete="current-password"
+                autofocus
+                required
+              />
+              <button
+                type="submit"
+                class="go-btn"
+                id="goBtn"
+                title="로그인"
+                aria-label="로그인"
+              >
+                ➜
+              </button>
+            </div>
+            <p class="error" id="error" role="alert"></p>
+          </div>
         </div>
       </div>
+
+      <div class="logon-footer">
+        <span class="logon-hint">
+          비밀번호를 입력한 뒤 <strong>Enter</strong> 를 누르세요.
+        </span>
+      </div>
     </form>
+
     <script src="login.js"></script>
   </body>
 </html>

@@ -228,7 +228,8 @@ document.getElementById("publishBtn").addEventListener("click", async () => {
       `${n}을 발행 완료로 정리할까요?`
     : `${n}을 하나의 커밋으로 발행합니다.\n\n` +
       `Netlify 배포가 1회 실행됩니다. 계속할까요?`;
-  if (!confirm(msg)) return;
+  if (!(await xpConfirm(msg, { title: "발행", okLabel: stale ? "정리" : "발행" })))
+    return;
 
   btn.disabled = true;
   btn.textContent = "발행 중…";
@@ -236,25 +237,29 @@ document.getElementById("publishBtn").addEventListener("click", async () => {
     const res = await fetch("/api/admin/publish", { method: "POST" });
     const json = await res.json();
     if (!json.ok) {
-      alert(`발행 실패: ${json.error}`);
+      await xpAlert(`발행 실패: ${json.error}`, { title: "발행", tone: "danger" });
       return;
     }
     if (json.cleaned) {
-      alert(`${json.message}\n\n${json.count}건을 발행 완료로 정리했습니다.`);
+      await xpAlert(
+        `${json.message}\n\n${json.count}건을 발행 완료로 정리했습니다.`,
+        { title: "정리 완료", symbol: "i" },
+      );
     } else {
-      alert(
+      await xpAlert(
         `발행했습니다. (${json.count}건)\n` +
           `커밋 ${json.sha}` +
           (json.pushed
-            ? " · 푸시 완료 — Netlify 배포가 시작됩니다."
-            : " · 푸시 안 함 — 서버에서 git push 해주세요."),
+            ? "\n푸시 완료 — Netlify 배포가 시작됩니다."
+            : "\n푸시 안 함 — 서버에서 git push 해주세요."),
+        { title: "발행 완료", symbol: "i" },
       );
     }
     await loadUnpublished();
     await load();
 loadUnpublished();
   } catch (e) {
-    alert(`발행 중 오류: ${e.message}`);
+    await xpAlert(`발행 중 오류: ${e.message}`, { title: "발행", tone: "danger" });
   } finally {
     btn.disabled = false;
     // 버튼 문구는 loadUnpublished() 가 상태에 맞게 다시 설정합니다.
@@ -325,27 +330,36 @@ listEl.addEventListener("click", async (e) => {
     if (isRetry && !preview.includes("*")) preview += "*";
     else if (hasRetryToo && !preview.includes("🎈")) preview += "🎈";
 
-    if (!confirm(`data.js 에 다음 이름으로 등록합니다.\n\n    ${preview}\n\n계속할까요?`))
-      return;
+    const go = await xpConfirm(
+      `data.js 에 다음 이름으로 등록합니다.\n\n    ${preview}\n\n계속할까요?`,
+      { title: "승인", okLabel: "승인" },
+    );
+    if (!go) return;
   }
 
   if (act === "reject") {
-    if (!confirm(`제출 #${id} 을(를) 반려 처리할까요?`)) return;
+    const go = await xpConfirm(`제출 #${id} 을(를) 반려 처리할까요?`, {
+      title: "반려",
+      okLabel: "반려",
+      danger: true,
+    });
+    if (!go) return;
   }
 
   // 승인 취소는 사유에 따라 후속 처리가 달라집니다.
   let revertReason = null;
   if (act === "revert") {
-    const answer = prompt(
+    // 사유에 따라 후속 처리가 달라지므로 버튼으로 직접 고르게 합니다.
+    revertReason = await xpChoose(
       `제출 #${id} 의 승인을 취소하고 data.js 에서 기록을 삭제합니다.\n\n` +
-        `사유를 선택하세요.\n` +
-        `  1 = 오등록 (단순 실수 — 완전 삭제)\n` +
-        `  2 = 캐주얼 모드 확인 (하단 삭제 목록에 남김)\n\n` +
-        `취소하려면 빈 칸으로 두고 확인을 누르세요.`,
-      "1",
+        `삭제 사유를 선택해 주세요.`,
+      [
+        { value: "mistake", label: "오등록 (완전 삭제)", kind: "danger" },
+        { value: "casual", label: "캐주얼 모드 확인", kind: "danger" },
+      ],
+      { title: "승인 취소" },
     );
-    if (answer !== "1" && answer !== "2") return;
-    revertReason = answer === "2" ? "casual" : "mistake";
+    if (!revertReason) return;
   }
 
   btn.disabled = true;
@@ -389,18 +403,20 @@ listEl.addEventListener("click", async (e) => {
 
     if (act === "approve") {
       const added = json.applied?.added?.name;
-      alert(
+      await xpAlert(
         `data.js 에 반영했습니다.` +
           (added ? `\n등록된 이름: ${added}` : "") +
           pendingMsg,
+        { title: "승인 완료", symbol: "i" },
       );
     }
 
     if (act === "revert") {
-      alert(
+      await xpAlert(
         `data.js 에서 기록을 삭제했습니다.` +
           (json.followUp ? `\n\n[후속 조치] ${json.followUp}` : "") +
           pendingMsg,
+        { title: "승인 취소 완료", symbol: "i" },
       );
     }
     await load();

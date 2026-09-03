@@ -29,9 +29,12 @@ body {
 }
 
 body.login-page {
-  display: grid;
-  place-items: center;
-  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+  padding: 20px;
 }
 
 /* ── 창 ──────────────────────────────────────────────── */
@@ -48,10 +51,6 @@ body.login-page {
 .main-window {
   max-width: 1100px;
   margin: 0 auto;
-}
-
-.login-box {
-  width: 340px;
 }
 
 .xp-titlebar {
@@ -513,10 +512,7 @@ a {
   padding: 30px;
 }
 
-.login-msg {
-  margin: 0 0 10px;
-  font-size: 12px;
-}
+
 
 .error {
   color: #c00;
@@ -552,4 +548,217 @@ a {
   .card-body {
     grid-template-columns: 1fr;
   }
+}
+
+/* =========================================================
+   XP 스타일 대화상자 (기본 alert/confirm/prompt 대체)
+   ========================================================= */
+.xp-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 20px;
+}
+
+.xp-dialog-overlay[hidden] {
+  display: none !important;
+}
+
+.xp-dialog {
+  min-width: 340px;
+  max-width: 520px;
+  background: var(--xp-face);
+  border: 1px solid var(--xp-blue-border);
+  border-radius: 8px 8px 0 0;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 12px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: xpDlgIn 0.12s ease-out;
+}
+
+@keyframes xpDlgIn {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.xp-dialog-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 20px 12px;
+}
+
+.xp-dialog-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  font-weight: bold;
+  font-style: italic;
+  color: #fff;
+  background: linear-gradient(180deg, #5babff 0%, #0d4fbd 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.xp-dialog.tone-warn .xp-dialog-icon {
+  background: linear-gradient(180deg, #ffd34d 0%, #f0a000 55%, #d98600 100%);
+}
+
+.xp-dialog.tone-danger .xp-dialog-icon {
+  background: linear-gradient(180deg, #f7a08a 0%, #d5442a 55%, #a92d17 100%);
+}
+
+.xp-dialog-msg {
+  margin: 0;
+  padding-top: 4px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #000;
+  /* 메시지의 줄바꿈을 그대로 살립니다 */
+  white-space: pre-line;
+}
+
+.xp-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 6px 20px 18px;
+}
+
+.xp-dialog-footer .xp-button {
+  min-width: 88px;
+}
+
+.xp-dialog .xp-btn.close {
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  padding: 0;
+}
+
+/* =========================================================
+   로그인 화면 (XP 로그온 느낌)
+   ========================================================= */
+.logon-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #fff;
+  text-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+
+.logon-logo {
+  font-size: 40px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
+}
+
+.logon-title {
+  font-size: 19px;
+  font-weight: bold;
+  letter-spacing: -0.3px;
+}
+
+.logon-sub {
+  font-size: 13px;
+  opacity: 0.9;
+}
+
+.login-box {
+  width: 380px;
+}
+
+.login-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+/* XP 사용자 계정 그림 느낌의 타일 */
+.login-avatar {
+  flex: 0 0 auto;
+  width: 52px;
+  height: 52px;
+  display: grid;
+  place-items: center;
+  font-size: 27px;
+  background: linear-gradient(180deg, #fff 0%, #dfe9f7 100%);
+  border: 2px solid #fff;
+  border-radius: 4px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.login-fields {
+  flex: 1;
+  min-width: 0;
+}
+
+.login-label {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #333;
+}
+
+.login-input-wrap {
+  display: flex;
+  gap: 7px;
+}
+
+.login-input-wrap .xp-input {
+  flex: 1;
+}
+
+/* XP 로그온의 초록 화살표 버튼 */
+.go-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border: 1px solid #2e7d32;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #7ed07a 0%, #43a047 50%, #2e7d32 100%);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.6),
+    0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.go-btn:hover {
+  filter: brightness(1.12);
+}
+
+.go-btn:active {
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+.logon-footer {
+  padding: 9px 16px;
+  background: var(--xp-face-alt);
+  border-top: 1px solid #d8d4c4;
+}
+
+.logon-hint {
+  font-size: 11.5px;
+  color: #555;
+}
+
+body.login-page .error {
+  margin: 7px 0 0;
 }
