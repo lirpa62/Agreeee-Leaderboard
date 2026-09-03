@@ -21,9 +21,16 @@
     if (version === "legacy") {
       body.removeAttribute("data-ui");
       label.textContent = "🪟 신버전 UI로 보기";
+      // 좁은 화면에서는 CSS 가 짧은 라벨로 바꿔치기합니다. (data-short)
+      label.dataset.short = "🪟 신버전";
+      label.dataset.icon = "🪟";
+      toggleBtn.title = "신버전 UI로 보기";
     } else {
       body.setAttribute("data-ui", "xp");
       label.textContent = "🖥️ 구버전 UI로 보기";
+      label.dataset.short = "🖥️ 구버전";
+      label.dataset.icon = "🖥️";
+      toggleBtn.title = "구버전 UI로 보기";
     }
   }
 

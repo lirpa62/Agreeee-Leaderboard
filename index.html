@@ -537,15 +537,39 @@
     <div class="xp-taskbar">
       <button type="button" class="xp-start" id="xpStart">
         <span class="xp-start-orb"></span>
-        시작
+        <span class="xp-start-label">시작</span>
       </button>
-      <span class="xp-task active" id="xpTaskWindow" data-target="sectionMain">
-        📜 이용약관에 동의하고 싶어 - 리더보드
+      <!-- 아이콘과 라벨을 나눠 두면 좁은 화면에서 라벨만 숨길 수 있습니다.
+           title 속성은 아이콘만 남았을 때의 힌트 역할을 합니다. -->
+      <span
+        class="xp-task active"
+        id="xpTaskWindow"
+        data-target="sectionMain"
+        title="이용약관에 동의하고 싶어 - 리더보드"
+      >
+        <span class="xp-task-icon">📜</span>
+        <span class="xp-task-label">이용약관에 동의하고 싶어 - 리더보드</span>
       </span>
-      <span class="xp-task" data-target="sectionSpeedrun">⚡ 스피드런</span>
-      <span class="xp-task" data-target="sectionShortcut">🎈 풍선 숏컷</span>
-      <span class="xp-task" data-target="sectionRetry">📜 재도전 인정</span>
-      <a class="xp-task xp-task-link" href="status.html">🔎 제출 상태 조회</a>
+      <span class="xp-task" data-target="sectionSpeedrun" title="스피드런">
+        <span class="xp-task-icon">⚡</span>
+        <span class="xp-task-label">스피드런</span>
+      </span>
+      <span class="xp-task" data-target="sectionShortcut" title="풍선 숏컷">
+        <span class="xp-task-icon">🎈</span>
+        <span class="xp-task-label">풍선 숏컷</span>
+      </span>
+      <span class="xp-task" data-target="sectionRetry" title="재도전 인정">
+        <span class="xp-task-icon">📜</span>
+        <span class="xp-task-label">재도전 인정</span>
+      </span>
+      <a
+        class="xp-task xp-task-link"
+        href="status.html"
+        title="제출 상태 조회"
+      >
+        <span class="xp-task-icon">🔎</span>
+        <span class="xp-task-label">제출 상태 조회</span>
+      </a>
 
       <!-- UI 버전 전환 토글 (구버전에서는 우측 상단 고정으로 표시됨) -->
       <button

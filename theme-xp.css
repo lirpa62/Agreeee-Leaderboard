@@ -1130,7 +1130,8 @@ body[data-ui="xp"] .container.minimized {
    ========================================================= */
 @media (max-width: 1460px) {
   body[data-ui="xp"] {
-    min-width: 0;
+    /* index.css 와 동일하게 375px 하한을 둡니다. */
+    min-width: 375px;
   }
 
   /* 기본 규칙의 width:1440px 가 index.css 의 미디어쿼리보다
@@ -1187,17 +1188,41 @@ body[data-ui="xp"] .container.minimized {
     height: 20px;
   }
 
-  /* 창 버튼: 라벨을 줄이고 터치 영역을 키웁니다 */
-  body[data-ui="xp"] .xp-task {
-    flex: 0 0 auto;
-    height: 34px;
-    max-width: 116px;
-    padding: 0 10px;
-    font-size: 0.72rem;
-    border-radius: 4px;
+  /* 창 버튼: 화면이 좁아지면 함께 줄어들며 라벨을 말줄임 처리합니다.
+     가로 스크롤 대신 '한 화면에 다 보이게' 하는 것이 목표입니다. */
+  body[data-ui="xp"] .xp-taskbar {
+    overflow-x: hidden;
   }
 
-  /* 좁은 화면에서 트레이는 시계만 남깁니다 */
+  body[data-ui="xp"] .xp-task {
+    /* 줄어들 수 있게 flex-shrink 를 허용하고 최소 폭만 지킵니다 */
+    flex: 1 1 auto;
+    min-width: 34px;
+    max-width: 132px;
+    height: 34px;
+    padding: 0 8px;
+    font-size: 0.72rem;
+    border-radius: 4px;
+    gap: 5px;
+  }
+
+  body[data-ui="xp"] .xp-task-icon {
+    flex: 0 0 auto;
+    line-height: 1;
+  }
+
+  body[data-ui="xp"] .xp-task-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  /* 메인 창은 제목이 길어 더 줄어들어도 되도록 */
+  body[data-ui="xp"] #xpTaskWindow {
+    max-width: 120px;
+  }
+
   body[data-ui="xp"] .xp-tray {
     flex: 0 0 auto;
     padding: 0 8px;
@@ -1205,10 +1230,14 @@ body[data-ui="xp"] .container.minimized {
   }
 
   body[data-ui="xp"] .ui-switch {
-    flex: 0 0 auto;
+    flex: 0 1 auto;
+    min-width: 40px;
     height: 34px;
-    padding: 0 12px;
+    padding: 0 10px;
     font-size: 0.72rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   /* 창 버튼(_ □ ✕)은 유지하되 손가락으로 누를 수 있게 키웁니다.
@@ -1263,6 +1292,87 @@ body[data-ui="xp"] .container.minimized {
 
   body[data-ui="xp"] .chart-section::after {
     color: #6b6b6b;
+  }
+}
+
+/* 라벨을 넣기엔 너무 좁아지는 구간 — 아이콘만 남깁니다.
+   title 속성이 남아 있어 무엇인지 확인할 수 있습니다. */
+@media (max-width: 620px) {
+  body[data-ui="xp"] .xp-task-label {
+    display: none;
+  }
+
+  body[data-ui="xp"] .xp-task {
+    /* 아이콘만 남은 상태에서도 화면에 다 들어가도록 더 줄어들 수 있게 */
+    flex: 1 1 auto;
+    min-width: 32px;
+    max-width: 52px;
+    padding: 0 4px;
+    justify-content: center;
+  }
+
+  body[data-ui="xp"] .xp-task-icon {
+    font-size: 14px;
+  }
+
+  body[data-ui="xp"] .xp-taskbar {
+    gap: 4px;
+    padding-right: 4px;
+  }
+
+  /* 시작 버튼도 로고만 남겨 자리를 아낍니다 */
+  body[data-ui="xp"] .xp-start-label {
+    display: none;
+  }
+
+  body[data-ui="xp"] .xp-start {
+    padding: 0 12px;
+    border-radius: 0 9px 9px 0;
+  }
+
+  /* 트레이는 시계만 (스피커 아이콘 제거) */
+  body[data-ui="xp"] .xp-tray > span:not(#xpClock) {
+    display: none;
+  }
+
+  body[data-ui="xp"] .xp-tray {
+    padding: 0 6px;
+    font-size: 0.66rem;
+  }
+
+  /* 아이콘만 남기면 무엇인지 알기 어려우므로 짧은 라벨로 바꿉니다.
+     (data-short 값을 대신 표시) */
+  body[data-ui="xp"] .ui-switch {
+    flex: 0 0 auto;
+    font-size: 0.68rem;
+    padding: 0 8px;
+  }
+
+  body[data-ui="xp"] #uiVersionLabel {
+    font-size: 0;
+  }
+
+  body[data-ui="xp"] #uiVersionLabel::after {
+    content: attr(data-short);
+    font-size: 0.68rem;
+  }
+}
+
+/* 가장 좁은 구간 — UI 전환 토글도 아이콘만 남깁니다. */
+@media (max-width: 440px) {
+  /* '🖥️ 구버전' 도 넣기 어려운 폭 — 아이콘만 남깁니다. */
+  body[data-ui="xp"] #uiVersionLabel::after {
+    content: attr(data-icon);
+    font-size: 14px;
+  }
+
+  body[data-ui="xp"] .ui-switch {
+    min-width: 34px;
+    padding: 0 8px;
+  }
+
+  body[data-ui="xp"] .xp-task {
+    max-width: 46px;
   }
 }
 
