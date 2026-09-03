@@ -763,6 +763,11 @@ body.login-page .error {
   margin: 7px 0 0;
 }
 
+/* 처리 완료 카드: 상태 태그와 버튼을 한 줄에 */
+.card-actions .status-tag {
+  align-self: flex-start;
+}
+
 /* 승인 시 수정 가능한 시간 입력 */
 .approve-field .reg-game,
 .approve-field .reg-tos {

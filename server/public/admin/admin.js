@@ -156,8 +156,13 @@ function cardHtml(row) {
             }</span>
              ${
                row.status === "approved"
-                 ? `<button type="button" class="xp-button danger"
-                      data-act="revert" style="margin-left:auto">승인 취소</button>`
+                 ? `<div class="approve-row" style="justify-content:flex-end">
+                      <button type="button" class="xp-button"
+                        data-act="reopen"
+                        title="data.js 에서 빼고 다시 검토 대기로 돌립니다">↩ 대기로 되돌리기</button>
+                      <button type="button" class="xp-button danger"
+                        data-act="revert">승인 취소</button>
+                    </div>`
                  : ""
              }`
       }
@@ -372,6 +377,16 @@ listEl.addEventListener("click", async (e) => {
     if (!go) return;
   }
 
+  if (act === "reopen") {
+    const go = await xpConfirm(
+      `제출 #${id} 을(를) 다시 검토 대기로 되돌립니다.\n\n` +
+        `data.js 에서 기록이 제거되며, 값을 고쳐 다시 승인할 수 있습니다.\n` +
+        `(반려가 아니라 '대기' 상태가 됩니다)`,
+      { title: "대기로 되돌리기", okLabel: "되돌리기" },
+    );
+    if (!go) return;
+  }
+
   if (act === "reject") {
     const go = await xpConfirm(`제출 #${id} 을(를) 반려 처리할까요?`, {
       title: "반려",
@@ -450,6 +465,18 @@ listEl.addEventListener("click", async (e) => {
           (added ? `\n등록된 이름: ${added}` : "") +
           pendingMsg,
         { title: "승인 완료", symbol: "i" },
+      );
+    }
+
+    if (act === "reopen") {
+      await xpAlert(
+        `다시 검토 대기로 되돌렸습니다.\n` +
+          `data.js 에서 기록을 제거했습니다.` +
+          (json.wasPublished
+            ? `\n\n이미 발행된 기록이라 삭제를 반영하려면 발행이 필요합니다.\n` +
+              `미발행 ${json.unpublished}건`
+            : `\n\n아직 발행 전이었으므로 발행할 것이 없습니다.`),
+        { title: "대기로 되돌림", symbol: "i" },
       );
     }
 

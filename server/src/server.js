@@ -503,6 +503,48 @@ app.post("/api/admin/submissions/:id/reject", requireAdmin, (req, res) => {
 });
 
 /**
+ * 승인 되돌리기 — data.js 에서 제거하고 다시 검토 대기로 보냅니다.
+ *
+ * '승인 취소'(reject)와 달리 반려하지 않습니다.
+ * 값을 고쳐 다시 승인해야 하는 건에 씁니다.
+ */
+app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => {
+  const sub = db.getSubmission(Number(req.params.id));
+  if (!sub) return res.status(404).json({ ok: false, error: "제출을 찾을 수 없습니다." });
+  if (sub.status !== "approved") {
+    return res
+      .status(409)
+      .json({ ok: false, error: "승인된 제출만 되돌릴 수 있습니다." });
+  }
+
+  const wasPublished = Boolean(sub.published_at);
+
+  try {
+    // data.js 에서 먼저 제거합니다.
+    // (남겨두면 리더보드에는 있는데 상태만 대기가 되어 어긋납니다)
+    const reverted = dataFile.revertSubmission({
+      name: sub.streamer_name,
+      gameTime: sub.game_time,
+      tosTime: sub.tos_time,
+      arrayName: dataFile.arrayNameFor(sub),
+    });
+
+    // 이미 발행됐던 건이면 '삭제'를 발행해야 리더보드에서도 사라집니다.
+    // 아직 발행 전이었다면 추가·삭제가 상쇄되므로 발행할 것이 없습니다.
+    db.reopenSubmission(sub.id, String(req.body?.note || ""), wasPublished);
+
+    res.json({
+      ok: true,
+      reverted,
+      wasPublished,
+      unpublished: db.countUnpublished(),
+    });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/**
  * 승인 취소 — data.js 에서 기록을 제거합니다.
  *
  * reason:

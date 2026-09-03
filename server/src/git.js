@@ -112,7 +112,11 @@ async function publishBatch(items) {
           : "명예의 전당";
 
   const added = items.filter((i) => i.status === "approved");
-  const removed = items.filter((i) => i.revert_reason);
+  // 승인취소(revert_reason)와 '대기로 되돌리기'(reopened_from_published)
+  // 모두 data.js 에서 제거된 건입니다.
+  const removed = items.filter(
+    (i) => i.revert_reason || i.reopened_from_published,
+  );
 
   // 제목: 건수 요약 / 본문: 개별 내역
   const parts = [];
@@ -129,11 +133,12 @@ async function publishBatch(items) {
     );
   }
   for (const s of removed) {
-    lines.push(
-      `- (삭제) ${s.streamer_name} — ${
-        s.revert_reason === "casual" ? "캐주얼 모드 확인" : "오등록 정정"
-      } [#${s.id}]`,
-    );
+    const why = s.revert_reason
+      ? s.revert_reason === "casual"
+        ? "캐주얼 모드 확인"
+        : "오등록 정정"
+      : "재검토를 위해 보류";
+    lines.push(`- (삭제) ${s.streamer_name} — ${why} [#${s.id}]`);
   }
 
   const message = `${subject}\n\n${lines.join("\n")}`;

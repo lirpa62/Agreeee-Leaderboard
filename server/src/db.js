@@ -78,6 +78,19 @@ if (!existingCols.has("published_at")) {
   db.exec("ALTER TABLE submissions ADD COLUMN published_at TEXT");
 }
 
+/**
+ * 이미 발행된 기록을 '대기로 되돌리기' 한 경우 표시합니다.
+ *
+ * 되돌리면 status 가 pending, reviewed_at 이 NULL 이 되어 일반적인
+ * 미발행 조건에 걸리지 않습니다. 하지만 data.js 에서는 이미 제거됐으므로
+ * 그 '삭제'를 발행해야 리더보드에서도 사라집니다.
+ */
+if (!existingCols.has("reopened_from_published")) {
+  db.exec(
+    "ALTER TABLE submissions ADD COLUMN reopened_from_published INTEGER NOT NULL DEFAULT 0",
+  );
+}
+
 const insertStmt = db.prepare(`
 INSERT INTO submissions (
   kind, streamer_name, color, channel_url,
@@ -138,7 +151,8 @@ function setStatus(id, status, adminNote) {
   return db
     .prepare(
       `UPDATE submissions
-       SET status = ?, admin_note = ?, reviewed_at = datetime('now')
+       SET status = ?, admin_note = ?, reviewed_at = datetime('now'),
+           reopened_from_published = 0
        WHERE id = ?`,
     )
     .run(status, adminNote || null, id);
@@ -227,6 +241,28 @@ function revertApproval(id, reason, adminNote) {
 }
 
 /**
+ * 승인을 되돌려 다시 검토 대기로 만듭니다.
+ *
+ * '승인 취소'(reject)와 달리 반려하지 않고 대기 상태로 보냅니다.
+ * 값을 고쳐 다시 승인할 건에 씁니다.
+ *
+ * ⚠ 이미 발행된 기록이라면 data.js 에서 제거된 것이 '삭제'라는 새 변경이
+ *   되므로, 발행 대상으로 남겨야 합니다. 그래서 published_at 은
+ *   여기서 지우지 않고 호출부(server.js)에서 판단합니다.
+ */
+function reopenSubmission(id, adminNote, wasPublished) {
+  return db
+    .prepare(
+      `UPDATE submissions
+       SET status = 'pending', reviewed_at = NULL, admin_note = ?,
+           revert_reason = NULL, published_at = NULL,
+           reopened_from_published = ?
+       WHERE id = ? AND status = 'approved'`,
+    )
+    .run(adminNote || null, wasPublished ? 1 : 0, id);
+}
+
+/**
  * 제출자에게 보여줄 공개 정보만 추립니다.
  * IP, 관리자 메모 등 내부 정보는 제외합니다.
  */
@@ -291,12 +327,18 @@ function listUnpublished() {
   return db
     .prepare(
       `SELECT id, kind, status, streamer_name, game_time, tos_time,
-              is_shortcut, is_retry, revert_reason, reviewed_at
+              is_shortcut, is_retry, revert_reason, reviewed_at,
+              reopened_from_published
        FROM submissions
        WHERE published_at IS NULL
-         AND reviewed_at IS NOT NULL
-         AND (status = 'approved' OR revert_reason IS NOT NULL)
-       ORDER BY reviewed_at ASC`,
+         AND (
+           -- 승인됐거나(추가), 승인취소됐거나(삭제)
+           (reviewed_at IS NOT NULL
+            AND (status = 'approved' OR revert_reason IS NOT NULL))
+           -- 발행된 뒤 대기로 되돌린 건(삭제)
+           OR reopened_from_published = 1
+         )
+       ORDER BY COALESCE(reviewed_at, created_at) ASC`,
     )
     .all();
 }
@@ -306,8 +348,11 @@ function countUnpublished() {
     .prepare(
       `SELECT COUNT(*) AS n FROM submissions
        WHERE published_at IS NULL
-         AND reviewed_at IS NOT NULL
-         AND (status = 'approved' OR revert_reason IS NOT NULL)`,
+         AND (
+           (reviewed_at IS NOT NULL
+            AND (status = 'approved' OR revert_reason IS NOT NULL))
+           OR reopened_from_published = 1
+         )`,
     )
     .get().n;
 }
@@ -340,6 +385,7 @@ module.exports = {
   updateApprovedRecord,
   updateVerification,
   revertApproval,
+  reopenSubmission,
   getPublicStatus,
   findByName,
   listPendingPublic,
