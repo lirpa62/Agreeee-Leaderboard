@@ -132,9 +132,17 @@ function render() {
                ${row[f.key] ? `href="${escapeHtml(row[f.key])}"` : ""}
                target="_blank" rel="noopener noreferrer"
                >${row[f.key] ? "열기" : "없음"}</a>
+            ${
+              f.key === "channelUrl"
+                ? `<button type="button" class="xp-button rec-verify"
+                     title="치지직에서 채널을 조회해 이름과 팔로워를 대조합니다"
+                     >채널 확인</button>`
+                : ""
+            }
           </label>`,
         ).join("")}
       </div>
+      <div class="rec-verify-box" hidden></div>
       <div class="rec-actions">
         <span class="rec-msg"></span>
         <button type="button" class="xp-button primary rec-save">저장</button>
@@ -203,6 +211,107 @@ async function save(card) {
   }
 }
 
+/* ─────────────────────────── 채널 확인 ─────────────────────────── */
+
+const num = (n) => (n == null ? "?" : Number(n).toLocaleString());
+
+/** 확인 결과를 카드 안에 펼쳐 보여줍니다. */
+function renderVerify(card, r) {
+  const box = card.querySelector(".rec-verify-box");
+  const chip = (c) =>
+    `<button type="button" class="rec-cand" data-url="https://chzzk.naver.com/${
+      c.channelId
+    }">${escapeHtml(c.channelName)} <span>팔로워 ${num(
+      c.followerCount,
+    )}</span></button>`;
+
+  // 주소가 비어 있던 경우 — 채워 넣을 후보를 제안합니다.
+  if (!r.hadUrl) {
+    if (r.status === "exact" && r.channel) {
+      box.className = "rec-verify-box warn";
+      box.innerHTML =
+        `<p><strong>채널 주소가 비어 있습니다.</strong> 이름으로 찾은 채널입니다 — ` +
+        `맞는지 확인이 필요합니다.</p>${chip(r.channel)}` +
+        `<p class="rec-verify-note">${escapeHtml(r.note)}</p>`;
+    } else if (r.candidates.length) {
+      box.className = "rec-verify-box warn";
+      box.innerHTML =
+        `<p><strong>채널 주소가 비어 있습니다.</strong> 이름이 정확히 일치하는 채널을 ` +
+        `찾지 못했습니다. 후보 중에서 확인이 필요합니다.</p>` +
+        r.candidates.map(chip).join("");
+    } else {
+      box.className = "rec-verify-box err";
+      box.innerHTML =
+        `<p><strong>채널 주소가 비어 있습니다.</strong> ` +
+        `'${escapeHtml(r.plainName)}' 으로는 채널을 찾지 못했습니다. ` +
+        `직접 찾아 입력해 주세요.</p>`;
+    }
+    box.hidden = false;
+    return;
+  }
+
+  // 주소가 있던 경우 — 그 채널이 이 기록의 주인이 맞는지 대조합니다.
+  if (r.status !== "exact" || !r.channel) {
+    box.className = "rec-verify-box err";
+    box.innerHTML =
+      `<p><strong>확인 필요</strong> — 입력된 주소로 채널을 조회하지 못했습니다. ` +
+      `주소가 잘못되었거나 삭제된 채널일 수 있습니다.</p>`;
+    box.hidden = false;
+    return;
+  }
+
+  const okFollowers = r.verdict === "pass";
+  const nameOk = r.nameMatch === "same" || r.nameMatch === "similar";
+  const good = okFollowers && nameOk;
+
+  const nameLine =
+    r.nameMatch === "same"
+      ? `이름 일치 — <strong>${escapeHtml(r.channel.channelName)}</strong>`
+      : r.nameMatch === "similar"
+        ? `이름 유사 — 기록 '<strong>${escapeHtml(r.plainName)}</strong>' ↔ ` +
+          `채널 '<strong>${escapeHtml(r.channel.channelName)}</strong>' (표기 차이로 보입니다)`
+        : `⚠️ <strong>이름 불일치</strong> — 기록 '${escapeHtml(r.plainName)}' ↔ ` +
+          `채널 '${escapeHtml(r.channel.channelName)}' — 다른 사람의 주소일 수 있습니다`;
+
+  box.className = `rec-verify-box ${good ? "ok" : "warn"}`;
+  box.innerHTML =
+    `<p>${good ? "✅ 확인됨" : "⚠️ 확인 필요"}</p>` +
+    `<p class="rec-verify-note">${nameLine}</p>` +
+    `<p class="rec-verify-note">${escapeHtml(r.note)}</p>`;
+  box.hidden = false;
+}
+
+async function verify(card) {
+  const btn = card.querySelector(".rec-verify");
+  const box = card.querySelector(".rec-verify-box");
+  const input = card.querySelector('input[data-key="channelUrl"]');
+
+  btn.disabled = true;
+  const original = btn.textContent;
+  btn.textContent = "조회 중…";
+  box.hidden = true;
+
+  try {
+    const r = await api("/api/admin/records/verify", {
+      method: "POST",
+      body: JSON.stringify({
+        arrayName: card.dataset.array,
+        index: Number(card.dataset.index),
+        // 저장 전 값으로도 확인할 수 있게 화면의 입력값을 보냅니다.
+        channelUrl: input.value.trim(),
+      }),
+    });
+    renderVerify(card, r);
+  } catch (e) {
+    box.className = "rec-verify-box err";
+    box.innerHTML = `<p>${escapeHtml(e.message)}</p>`;
+    box.hidden = false;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = original;
+  }
+}
+
 async function load() {
   try {
     const { rows: fetched } = await api("/api/admin/records");
@@ -226,8 +335,21 @@ $("tabs").addEventListener("click", (ev) => {
 });
 
 $("list").addEventListener("click", (ev) => {
-  const btn = ev.target.closest(".rec-save");
-  if (btn) save(btn.closest(".rec-card"));
+  const save_ = ev.target.closest(".rec-save");
+  if (save_) return save(save_.closest(".rec-card"));
+
+  const verify_ = ev.target.closest(".rec-verify");
+  if (verify_) return verify(verify_.closest(".rec-card"));
+
+  // 제안된 후보를 누르면 입력란에 채워 넣습니다. (저장은 따로 눌러야 합니다)
+  const cand = ev.target.closest(".rec-cand");
+  if (cand) {
+    const card = cand.closest(".rec-card");
+    card.querySelector('input[data-key="channelUrl"]').value = cand.dataset.url;
+    const msg = card.querySelector(".rec-msg");
+    msg.textContent = "채워 넣었습니다. 저장을 눌러 주세요.";
+    msg.className = "rec-msg";
+  }
 });
 
 // Enter 로도 저장할 수 있게 합니다.

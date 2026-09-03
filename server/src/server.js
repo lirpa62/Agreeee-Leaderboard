@@ -713,6 +713,92 @@ app.post("/api/admin/records/urls", requireAdmin, (req, res) => {
 });
 
 /**
+ * 채널 확인 — 기록의 이름과 채널 주소가 맞는지 대조합니다.
+ *
+ * 두 가지 경우를 모두 처리합니다.
+ *   1) 채널 주소가 있음 → 그 채널을 조회해 기록의 이름과 대조
+ *   2) 채널 주소가 없음 → 이름으로 검색해 채울 후보를 제안
+ *
+ * 판정만 돌려주고 저장은 하지 않습니다. 실제 반영은 관리자가
+ * 값을 확인한 뒤 '저장' 을 눌러야 이루어집니다.
+ */
+app.post("/api/admin/records/verify", requireAdmin, async (req, res) => {
+  const { arrayName, index } = req.body || {};
+  if (typeof arrayName !== "string" || !Number.isInteger(index) || index < 0) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "arrayName 과 index 가 필요합니다." });
+  }
+
+  let record;
+  try {
+    record = dataFile.listRecords().find(
+      (r) => r.arrayName === arrayName && r.index === index,
+    );
+  } catch (e) {
+    return res.status(500).json({ ok: false, error: e.message });
+  }
+  if (!record) {
+    return res.status(404).json({ ok: false, error: "기록을 찾을 수 없습니다." });
+  }
+
+  // 화면에서 편집 중인 값을 우선 씁니다. (저장 전에도 확인할 수 있게)
+  const channelUrl =
+    "channelUrl" in (req.body || {})
+      ? String(req.body.channelUrl || "").trim()
+      : record.channelUrl;
+
+  if (channelUrl) {
+    const err = validateUrl(
+      channelUrl,
+      "채널 주소",
+      CHZZK_HOSTS,
+      "치지직 채널 주소(chzzk.naver.com)만 입력할 수 있습니다.",
+    );
+    if (err) return res.status(400).json({ ok: false, error: err });
+  }
+
+  // data.js 의 이름에는 리그 표기(*, 🎈)가 붙어 있으므로 떼고 비교합니다.
+  const plainName = dataFile.baseName(record.name);
+
+  try {
+    const result = await chzzk.resolveChannel({
+      channelUrl,
+      streamerName: plainName,
+    });
+    const channel = result.status === "exact" ? result.channel : null;
+
+    // 스피드런은 3,000, 나머지는 10,000 이 등재 기준입니다.
+    const kind = arrayName === "SPEEDRUN_DATA" ? "speedrun" : "record";
+    const judged = judgeFollowers(
+      kind,
+      channel?.followerCount ?? null,
+      result.status,
+    );
+    const nameCheck = channel
+      ? compareNames(plainName, channel.channelName)
+      : { match: "unknown" };
+
+    res.json({
+      ok: true,
+      // 주소가 비어 있었는지 알려 주어야 화면에서 문구를 나눌 수 있습니다.
+      hadUrl: Boolean(channelUrl),
+      recordName: record.name,
+      plainName,
+      status: result.status,
+      channel,
+      candidates: result.candidates || [],
+      nameMatch: nameCheck.match,
+      verdict: judged.verdict,
+      note: judged.note,
+      threshold: kind === "speedrun" ? 3000 : 10000,
+    });
+  } catch (e) {
+    res.status(502).json({ ok: false, error: `조회에 실패했습니다: ${e.message}` });
+  }
+});
+
+/**
  * 발행 — 미발행 건들을 하나의 커밋으로 묶어 푸시합니다.
  *
  * Netlify 는 배포 1회당 크레딧을 쓰므로(1 deploy = 15 credits),
