@@ -18,6 +18,50 @@ const API_BASE = (() => {
 const $ = (id) => document.getElementById(id);
 
 /* ---------------------------------------------------------
+   XP 스타일 알림 대화상자
+   브라우저 기본 alert 는 OS 크롬이 그대로 드러나 XP 연출이 깨지므로
+   리더보드와 같은 모양의 모달을 씁니다.
+   --------------------------------------------------------- */
+let modalLastFocused = null;
+
+function closeXpModal() {
+  $("xpModalOverlay").hidden = true;
+  if (modalLastFocused && typeof modalLastFocused.focus === "function") {
+    modalLastFocused.focus();
+  }
+  modalLastFocused = null;
+}
+
+/**
+ * @param {string} message  본문 (줄바꿈은 CSS 가 유지)
+ * @param {object} opts     { title, icon, symbol }
+ */
+function xpModal(message, opts = {}) {
+  const overlay = $("xpModalOverlay");
+  modalLastFocused = document.activeElement;
+
+  $("xpModalTitle").textContent = opts.title || "이용약관에 동의하고 싶어";
+  $("xpModalIcon").textContent = opts.symbol || "!";
+  $("xpModalMsg").textContent = message;
+
+  overlay.hidden = false;
+  $("xpModalOk").focus();
+}
+
+$("xpModalOk").addEventListener("click", closeXpModal);
+$("xpModalX").addEventListener("click", closeXpModal);
+$("xpModalOverlay").addEventListener("mousedown", (e) => {
+  if (e.target === $("xpModalOverlay")) closeXpModal();
+});
+document.addEventListener("keydown", (e) => {
+  if ($("xpModalOverlay").hidden) return;
+  if (e.key === "Escape" || e.key === "Enter") {
+    e.preventDefault();
+    closeXpModal();
+  }
+});
+
+/* ---------------------------------------------------------
    캡차 (Cloudflare Turnstile)
    서버가 켜져 있다고 알려줄 때만 위젯을 띄웁니다.
    --------------------------------------------------------- */
@@ -92,6 +136,40 @@ if (initialKind === "speedrun") {
   if (el) el.checked = true;
 }
 syncKind();
+
+/* ---------------------------------------------------------
+   리그 선택 체크박스는 하나만 고를 수 있습니다.
+   숏컷 / 재도전 / 캐주얼은 서로 다른 리그로 나뉘어(arrayNameFor)
+   동시에 성립할 수 없습니다. 둘째를 고르면 안내하고 되돌립니다.
+   --------------------------------------------------------- */
+const LEAGUE_LABELS = {
+  isShortcut: "풍선 숏컷 사용",
+  isRetry: "노풍선 재도전",
+  isCasual: "캐주얼 모드",
+};
+
+document.querySelectorAll("#recordOnlyChecks input[data-league]").forEach((el) => {
+  el.addEventListener("change", () => {
+    if (!el.checked) return;
+
+    const others = [...document.querySelectorAll("#recordOnlyChecks input[data-league]")]
+      .filter((o) => o !== el && o.checked);
+    if (!others.length) return;
+
+    // 이미 고른 항목이 있으면 방금 누른 것을 되돌립니다.
+    el.checked = false;
+    const already = LEAGUE_LABELS[others[0].id] || "다른 항목";
+    const tried = LEAGUE_LABELS[el.id] || "이 항목";
+
+    xpModal(
+      `이미 '${already}'을(를) 선택하셨습니다.\n\n` +
+        `'${tried}'와(과) 동시에 성립할 수 없습니다.\n` +
+        `각 항목은 서로 다른 리그로 등재되기 때문입니다.\n\n` +
+        `(제 3 조에 의거하여 인정협회는 중복 선택을 인정하지 않습니다)`,
+      { title: "인정협회", symbol: "!" },
+    );
+  });
+});
 
 /* 색상 입력과 색상 선택기 연동 */
 $("colorPicker").addEventListener("input", (e) => {
@@ -225,6 +303,10 @@ function checkUrlField(inputId, errorId, hosts, hint, { required = false } = {})
   return ok();
 }
 
+/**
+ * 세 URL 항목을 모두 검사합니다.
+ * @returns {{ok: boolean, failed: {label: string, msg: string}[]}}
+ */
 function validateUrlFields() {
   const a = checkUrlField(
     "channelUrl",
@@ -245,7 +327,17 @@ function validateUrlFields() {
     [...CHZZK_HOSTS, ...YOUTUBE_HOSTS],
     "치지직 또는 유튜브 다시보기 주소만 입력할 수 있습니다.",
   );
-  return a && b && c;
+
+  // 실패한 항목을 모아 대화상자에서 함께 안내합니다.
+  const failed = [];
+  const pick = (ok, label, errorId) => {
+    if (!ok) failed.push({ label, msg: $(errorId).textContent });
+  };
+  pick(a, "치지직 채널 주소", "channelUrlError");
+  pick(b, "클립 주소", "clipUrlError");
+  pick(c, "다시보기 주소", "vodUrlError");
+
+  return { ok: a && b && c, failed };
 }
 
 // 입력에서 벗어날 때 즉시 안내
@@ -324,8 +416,17 @@ $("submitForm").addEventListener("submit", async (e) => {
   const kind = document.querySelector('input[name="kind"]:checked').value;
 
   // URL 형식·도메인 확인 (서버에서도 다시 검증합니다)
-  if (!validateUrlFields()) {
-    showErrors(["주소를 다시 확인해 주세요."]);
+  const urlCheck = validateUrlFields();
+  if (!urlCheck.ok) {
+    xpModal(
+      `입력하신 주소를 확인해 주세요.\n\n` +
+        urlCheck.failed.map((f) => `· ${f.label}\n   ${f.msg}`).join("\n") +
+        `\n\n(제 1 조에 의거하여 인정협회는 확인할 수 없는 증빙을 인정하지 않습니다)`,
+      { title: "증빙 확인", symbol: "!" },
+    );
+    // 첫 번째 문제 항목으로 이동
+    const first = document.querySelector(".field-error:not([hidden])");
+    if (first) first.scrollIntoView({ behavior: "smooth", block: "center" });
     return;
   }
 

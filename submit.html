@@ -211,17 +211,23 @@
               </figure>
             </div>
 
+            <!-- 세 항목은 서로 다른 리그로 나뉘므로 하나만 선택할 수 있습니다.
+                 아무것도 고르지 않으면 명예의 전당으로 등록됩니다. -->
             <div class="checks" id="recordOnlyChecks">
+              <p class="hint" style="margin: 0 0 8px">
+                해당하는 항목이 있으면 <strong>하나만</strong> 선택해 주세요.
+                (없으면 명예의 전당으로 등록됩니다)
+              </p>
               <label class="check">
-                <input type="checkbox" id="isShortcut" /> 풍선 숏컷을
+                <input type="checkbox" id="isShortcut" data-league /> 풍선 숏컷을
                 사용했습니다
               </label>
               <label class="check">
-                <input type="checkbox" id="isRetry" /> 숏컷 사용 후 노풍선으로
-                재도전한 기록입니다
+                <input type="checkbox" id="isRetry" data-league /> 숏컷 사용 후
+                노풍선으로 재도전한 기록입니다
               </label>
               <label class="check">
-                <input type="checkbox" id="isCasual" /> 캐주얼 모드로
+                <input type="checkbox" id="isCasual" data-league /> 캐주얼 모드로
                 진행했습니다
               </label>
             </div>
@@ -295,6 +301,34 @@
               다른 기록 제출
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- XP 스타일 알림 대화상자 -->
+    <div class="xp-modal-overlay" id="xpModalOverlay" hidden>
+      <div
+        class="xp-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="xpModalTitle"
+        aria-describedby="xpModalMsg"
+      >
+        <div class="xp-titlebar">
+          <span class="xp-titlebar-icon">📜</span>
+          <span class="xp-titlebar-text" id="xpModalTitle">알림</span>
+          <span class="xp-btns">
+            <button type="button" class="xp-btn close" id="xpModalX" title="닫기">
+              ✕
+            </button>
+          </span>
+        </div>
+        <div class="xp-modal-body">
+          <span class="xp-modal-icon" id="xpModalIcon">!</span>
+          <p class="xp-modal-msg" id="xpModalMsg"></p>
+        </div>
+        <div class="xp-modal-footer">
+          <button type="button" class="xp-button agree" id="xpModalOk">확인</button>
         </div>
       </div>
     </div>

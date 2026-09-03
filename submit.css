@@ -681,3 +681,100 @@ body {
 .field-error[hidden] {
   display: none;
 }
+
+/* =========================================================
+   XP 스타일 알림 대화상자
+   (기본 alert 대신 사용 — 리더보드와 같은 모양)
+   ========================================================= */
+.xp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.xp-modal-overlay[hidden] {
+  display: none !important;
+}
+
+.xp-modal {
+  min-width: 320px;
+  max-width: 480px;
+  background: var(--xp-face);
+  border: 1px solid var(--xp-blue-border);
+  border-radius: 8px 8px 0 0;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.25),
+    0 12px 32px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+  animation: xpModalIn 0.12s ease-out;
+}
+
+@keyframes xpModalIn {
+  from {
+    transform: scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.xp-modal .xp-titlebar {
+  padding-right: 4px;
+}
+
+.xp-modal .xp-btn {
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  padding: 0;
+}
+
+.xp-modal-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px 20px 12px;
+}
+
+/* 경고 아이콘 (XP 다이얼로그 느낌) */
+.xp-modal-icon {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  font-weight: bold;
+  font-style: italic;
+  color: #fff;
+  background: linear-gradient(180deg, #ffd34d 0%, #f0a000 55%, #d98600 100%);
+  box-shadow:
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+.xp-modal-msg {
+  margin: 0;
+  padding-top: 3px;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #000;
+  /* 메시지의 줄바꿈(\n)을 그대로 반영 */
+  white-space: pre-line;
+}
+
+.xp-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding: 6px 20px 18px;
+}
+
+.xp-modal-footer .xp-button {
+  min-width: 88px;
+}
