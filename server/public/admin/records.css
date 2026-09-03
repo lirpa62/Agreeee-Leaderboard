@@ -1,0 +1,163 @@
+/* 기록 링크 관리 화면 (admin.css 위에 얹습니다) */
+
+.rec-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+
+.rec-select {
+  width: auto;
+  min-width: 120px;
+}
+
+.rec-search {
+  width: auto;
+  flex: 1 1 160px;
+  min-width: 120px;
+}
+
+.rec-note {
+  margin: 0 0 12px;
+  padding: 7px 10px;
+  background: #fdfbe5;
+  border: 1px solid #e3d9a0;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #4d4d4d;
+}
+
+.rec-note code {
+  background: #fff;
+  border: 1px solid #ddd;
+  padding: 0 3px;
+}
+
+.rec-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rec-card {
+  border: 1px solid #aca899;
+  background: #fff;
+  padding: 9px 11px 10px;
+  /* 링크가 얼마나 채워졌는지 왼쪽 색으로 한눈에 보이게 합니다. */
+  border-left: 4px solid #c9c9c9;
+}
+
+.rec-card.missing {
+  border-left-color: #c1272d;
+}
+.rec-card.partial {
+  border-left-color: #e0a900;
+}
+.rec-card.complete {
+  border-left-color: #3d8b37;
+}
+
+.rec-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+.rec-name {
+  font-weight: bold;
+  font-size: 12px;
+}
+
+.rec-league {
+  font-size: 10px;
+  padding: 1px 6px;
+  background: #ece9d8;
+  border: 1px solid #c9c4b4;
+  color: #4d4d4d;
+}
+
+.rec-time {
+  font-size: 11px;
+  color: #666;
+}
+
+.rec-state {
+  margin-left: auto;
+  font-size: 11px;
+  color: #666;
+}
+
+.rec-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.rec-field {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.rec-field-label {
+  flex: 0 0 108px;
+  font-size: 11px;
+  color: #333;
+}
+
+.rec-field .xp-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+}
+
+.rec-open {
+  flex: 0 0 36px;
+  text-align: center;
+  font-size: 11px;
+  color: #0054e3;
+  /* 좁아져도 '없음'이 세로로 쪼개지지 않게 합니다. */
+  white-space: nowrap;
+}
+
+.rec-open.empty {
+  color: #b0b0b0;
+}
+
+.rec-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 9px;
+}
+
+.rec-msg {
+  font-size: 11px;
+  color: #666;
+}
+
+.rec-msg.ok {
+  color: #2b7a26;
+}
+
+.rec-msg.err {
+  color: #c1272d;
+}
+
+/* 좁은 화면에서는 라벨을 위로 올립니다. */
+@media (max-width: 620px) {
+  .rec-field {
+    flex-wrap: wrap;
+  }
+  .rec-field-label {
+    flex: 1 1 100%;
+  }
+  .rec-search {
+    flex: 1 1 100%;
+  }
+}

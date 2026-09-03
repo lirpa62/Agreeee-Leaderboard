@@ -292,5 +292,7 @@ module.exports = {
   validateUrl,
   THRESHOLDS,
   GAME_TIME_MAX_MIN,
+  CHZZK_HOSTS,
+  YOUTUBE_HOSTS,
   isHttpUrl,
 };

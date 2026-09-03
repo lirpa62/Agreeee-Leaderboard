@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="icon" type="image/png" href="favicon.png" />
+    <title>기록 링크 관리 - 리더보드 관리자</title>
+    <link rel="stylesheet" href="admin.css" />
+    <link rel="stylesheet" href="records.css" />
+  </head>
+  <body>
+    <div class="xp-window main-window">
+      <div class="xp-titlebar">
+        <span class="xp-titlebar-icon">🔗</span>
+        <span class="xp-titlebar-text">기록 링크 관리</span>
+        <span class="xp-btns">
+          <button
+            type="button"
+            class="xp-btn close"
+            id="closeBtn"
+            title="검토 화면으로"
+          >
+            ✕
+          </button>
+        </span>
+      </div>
+
+      <div class="xp-window-body">
+        <div class="rec-toolbar">
+          <div class="tabs" id="tabs">
+            <button type="button" class="tab active" data-filter="all">
+              전체 <span class="badge" id="cnt-all">0</span>
+            </button>
+            <button type="button" class="tab" data-filter="missing">
+              링크 없음 <span class="badge" id="cnt-missing">0</span>
+            </button>
+            <button type="button" class="tab" data-filter="partial">
+              일부만 <span class="badge" id="cnt-partial">0</span>
+            </button>
+            <button type="button" class="tab" data-filter="complete">
+              완비 <span class="badge" id="cnt-complete">0</span>
+            </button>
+          </div>
+
+          <select class="xp-input rec-select" id="leagueFilter">
+            <option value="">모든 리그</option>
+            <option value="RECORD_DATA">명예의 전당</option>
+            <option value="RETRY_DATA">재도전 인정</option>
+            <option value="SHORTCUT_DATA">풍선 숏컷</option>
+            <option value="SPEEDRUN_DATA">스피드런</option>
+          </select>
+
+          <input
+            type="search"
+            class="xp-input rec-search"
+            id="search"
+            placeholder="스트리머 이름 검색"
+          />
+          <button type="button" class="xp-button" id="refreshBtn">
+            새로고침
+          </button>
+        </div>
+
+        <p class="rec-note">
+          기록(이름·시간)은 이 화면에서 바꿀 수 없습니다. 링크만 수정합니다.
+          저장하면 <code>data.js</code> 가 곧바로 바뀌며, 리더보드에 반영하려면
+          검토 화면에서 <strong>발행</strong>해야 합니다.
+        </p>
+
+        <div class="rec-list" id="list"></div>
+        <p class="empty" id="empty" hidden>표시할 기록이 없습니다.</p>
+      </div>
+    </div>
+
+    <script src="dialog.js"></script>
+    <script src="records.js"></script>
+  </body>
+</html>

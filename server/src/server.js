@@ -20,6 +20,9 @@ const {
   compareNames,
   checkGameTimeOutlier,
   validateTimeString,
+  validateUrl,
+  CHZZK_HOSTS,
+  YOUTUBE_HOSTS,
 } = require("./validate");
 const dataFile = require("./dataFile");
 const git = require("./git");
@@ -638,6 +641,75 @@ app.get("/api/admin/unpublished", requireAdmin, async (req, res) => {
     // false 면 DB 에는 미발행으로 남아 있지만 파일은 이미 커밋된 상태입니다.
     hasFileChanges: dirty,
   });
+});
+
+/* ─────────────────── 기록 링크 관리 (검토와 별개 화면) ─────────────────── */
+
+/** data.js 의 모든 기록을 링크와 함께 나열합니다. */
+app.get("/api/admin/records", requireAdmin, (req, res) => {
+  try {
+    res.json({ ok: true, rows: dataFile.listRecords() });
+  } catch (e) {
+    res.status(500).json({ ok: false, error: e.message });
+  }
+});
+
+/**
+ * 기록 하나의 링크를 추가·수정·삭제합니다.
+ *
+ * 값이 빈 문자열이면 그 링크를 지웁니다.
+ * 기록(이름·시간) 자체는 이 화면에서 건드리지 않습니다.
+ */
+app.post("/api/admin/records/urls", requireAdmin, (req, res) => {
+  const { arrayName, index } = req.body || {};
+  if (typeof arrayName !== "string" || !Number.isInteger(index) || index < 0) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "arrayName 과 index 가 필요합니다." });
+  }
+
+  // 저장하기 전에 URL 을 검증합니다. 제출 폼과 같은 규칙을 씁니다.
+  // (클립은 치지직만, 다시보기는 치지직 + 유튜브)
+  const RULES = {
+    channelUrl: [
+      "채널 주소",
+      CHZZK_HOSTS,
+      "치지직 채널 주소(chzzk.naver.com)만 입력할 수 있습니다.",
+    ],
+    clipUrl: [
+      "클립 주소",
+      CHZZK_HOSTS,
+      "치지직 클립 주소(chzzk.naver.com)만 입력할 수 있습니다.",
+    ],
+    vodUrl: [
+      "다시보기 주소",
+      [...CHZZK_HOSTS, ...YOUTUBE_HOSTS],
+      "치지직 또는 유튜브 다시보기 주소만 입력할 수 있습니다.",
+    ],
+  };
+
+  const urls = {};
+  for (const [key, [label, hosts, hint]] of Object.entries(RULES)) {
+    if (!(key in (req.body || {}))) continue;
+    const raw = String(req.body[key] || "").trim();
+    if (!raw) {
+      urls[key] = ""; // 빈 값 = 삭제
+      continue;
+    }
+    const err = validateUrl(raw, label, hosts, hint);
+    if (err) return res.status(400).json({ ok: false, error: err });
+    urls[key] = raw;
+  }
+  if (!Object.keys(urls).length) {
+    return res.status(400).json({ ok: false, error: "수정할 링크가 없습니다." });
+  }
+
+  try {
+    const updated = dataFile.updateRecordUrls(arrayName, index, urls);
+    res.json({ ok: true, updated });
+  } catch (e) {
+    res.status(400).json({ ok: false, error: e.message });
+  }
 });
 
 /**

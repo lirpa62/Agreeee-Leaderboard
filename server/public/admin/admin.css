@@ -130,6 +130,11 @@ body.login-page {
   cursor: pointer;
 }
 
+/* .xp-button 을 <a> 로도 씁니다 (링크 관리 화면 이동 등). */
+a.xp-button {
+  text-decoration: none;
+}
+
 .xp-button:hover {
   background: linear-gradient(
     180deg,

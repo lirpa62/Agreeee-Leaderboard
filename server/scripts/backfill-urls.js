@@ -25,6 +25,9 @@ const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
 
+// 리그별 등재 기준(명예의 전당 10,000 / 스피드런 3,000)을 그대로 씁니다.
+const { THRESHOLDS } = require("../src/validate");
+
 const ARRAY_NAMES = [
   "RECORD_DATA",
   "RETRY_DATA",
@@ -77,11 +80,21 @@ async function lookup() {
   const data = readData(DATA_JS);
 
   // 같은 스트리머가 여러 리그에 있으므로 이름 기준으로 한 번만 조회합니다.
-  const names = new Set();
+  //
+  // 리그마다 등재 기준이 다릅니다(명예의 전당 10,000 / 스피드런 3,000).
+  // 스피드런에만 있는 스트리머에게 10,000 을 적용하면 진짜 채널이
+  // 후보에서 걸러져 버리므로, 그 사람이 속한 리그 중 가장 낮은 기준을 씁니다.
+  const minFollowers = new Map();
   for (const key of ARRAY_NAMES) {
-    for (const item of data[key]) names.add(cleanName(item.name));
+    const threshold =
+      key === "SPEEDRUN_DATA" ? THRESHOLDS.speedrun : THRESHOLDS.record;
+    for (const item of data[key]) {
+      const name = cleanName(item.name);
+      const prev = minFollowers.get(name);
+      minFollowers.set(name, prev == null ? threshold : Math.min(prev, threshold));
+    }
   }
-  const sorted = [...names].sort();
+  const sorted = [...minFollowers.keys()].sort();
   console.log(`고유 스트리머 ${sorted.length}명 조회를 시작합니다.\n`);
 
   // 이미 만들어 둔 결과가 있으면 이어서 진행합니다(중단 후 재실행 대비).
@@ -118,11 +131,11 @@ async function lookup() {
     //   진짜(팔로워 25만)와 사칭(팔로워 22) 이 둘 다 이름이 정확히 같고,
     //   '서새봄' 은 진짜가 '서새봄냥 SEBOM' 이라 정확히 일치하지 않습니다.
     //   그래서 정확 일치가 여럿이면 자동 확정하지 않고 사람에게 넘깁니다.
-    //   이 리더보드는 10,000 팔로우 이상만 등재하므로, 그 미만은 후보에서
+    //   등재 기준(명예의 전당 10,000 / 스피드런 3,000) 미만은 후보에서
     //   제외해 사칭 채널이 잘못 확정되는 일을 막습니다.
-    const MIN_FOLLOWERS = 10000;
+    const floor = minFollowers.get(name);
     const plausible = candidates.filter(
-      (c) => (c.followerCount ?? 0) >= MIN_FOLLOWERS,
+      (c) => (c.followerCount ?? 0) >= floor,
     );
     const hits = plausible.filter((c) => c.channelName === name);
     const pick = hits.length === 1 ? hits[0] : null;
@@ -146,6 +159,8 @@ async function lookup() {
           followers: c.followerCount,
           url: `https://chzzk.naver.com/${c.channelId}`,
         })),
+      // 어떤 기준으로 걸렀는지 남겨 둡니다(스피드런 전용은 3,000).
+      minFollowers: floor,
       ...(error ? { error } : {}),
       // 아는 경우 직접 채워 넣으세요. 비어 있으면 건너뜁니다.
       clipUrl: out[name]?.clipUrl || "",

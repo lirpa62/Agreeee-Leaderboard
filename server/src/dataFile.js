@@ -441,6 +441,162 @@ function baseName(name) {
     .trim();
 }
 
+/* ───────────────────── 링크 조회·수정 (관리 화면용) ───────────────────── */
+
+const URL_KEYS = ["channelUrl", "clipUrl", "vodUrl"];
+
+/**
+ * 모든 기록을 링크와 함께 나열합니다. (관리 화면 목록용)
+ *
+ * 항목을 나중에 다시 찾을 수 있도록 배열 이름과 위치를 함께 돌려줍니다.
+ * 같은 이름이 여러 리그에 있을 수 있어 이름만으로는 특정할 수 없습니다.
+ */
+function listRecords(filePath = DATA_JS_PATH) {
+  const data = readData(filePath);
+  const out = [];
+  for (const arrayName of ARRAY_NAMES) {
+    data[arrayName].forEach((item, index) => {
+      out.push({
+        arrayName,
+        index,
+        name: item.name,
+        gameTime: item.gameTime,
+        tosTime: item.tosTime ?? null,
+        addedAt: item.addedAt ?? null,
+        channelUrl: item.channelUrl ?? "",
+        clipUrl: item.clipUrl ?? "",
+        vodUrl: item.vodUrl ?? "",
+      });
+    });
+  }
+  return out;
+}
+
+/**
+ * 항목 하나의 링크를 수정합니다. (추가·변경·삭제 모두)
+ *
+ * 값이 빈 문자열이면 해당 필드를 지웁니다.
+ * data.js 를 통째로 다시 쓰면 주석과 서식이 사라지므로,
+ * 해당 항목의 텍스트 범위만 찾아 그 부분만 다시 씁니다.
+ *
+ * @param {string} arrayName  RECORD_DATA 등
+ * @param {number} index      배열 내 위치
+ * @param {object} urls       { channelUrl?, clipUrl?, vodUrl? }
+ */
+function updateRecordUrls(arrayName, index, urls, filePath = DATA_JS_PATH) {
+  if (!ARRAY_NAMES.includes(arrayName)) {
+    throw new Error(`알 수 없는 배열입니다: ${arrayName}`);
+  }
+  const before = readData(filePath);
+  const target = before[arrayName]?.[index];
+  if (!target) {
+    throw new Error(`${arrayName}[${index}] 항목을 찾을 수 없습니다.`);
+  }
+
+  // 수정 후의 항목을 만들어 직렬화합니다.
+  const next = { name: target.name, gameTime: target.gameTime };
+  if (target.tosTime !== undefined && target.tosTime !== null) {
+    next.tosTime = target.tosTime;
+  }
+  if (target.addedAt) next.addedAt = target.addedAt;
+  for (const key of URL_KEYS) {
+    // 전달되지 않은 키는 기존 값을 유지하고, 빈 문자열이면 지웁니다.
+    const value = key in urls ? String(urls[key] || "").trim() : target[key];
+    if (value) next[key] = value;
+  }
+
+  const src = before.src;
+  const { start, end } = findItemRange(src, arrayName, index);
+  const indent = " ".repeat(2);
+  // serializeItem 은 끝에 쉼표를 붙이므로 떼어내고 원본 범위에 맞춥니다.
+  const replacement = serializeItem(next, indent).replace(/,$/, "").trimStart();
+  const updated = src.slice(0, start) + replacement + src.slice(end);
+
+  // 쓰기 전에 결과물을 다시 평가해 검증합니다.
+  const ctx = { __out: null };
+  vm.createContext(ctx);
+  try {
+    vm.runInContext(`${updated};__out={${ARRAY_NAMES.join(",")}};`, ctx, {
+      timeout: 5000,
+    });
+  } catch (e) {
+    throw new Error(`생성된 data.js 가 올바르지 않습니다: ${e.message}`);
+  }
+  for (const key of ARRAY_NAMES) {
+    if (ctx.__out[key].length !== before[key].length) {
+      throw new Error(
+        `${key} 개수가 달라졌습니다 (${before[key].length} → ${ctx.__out[key].length}).`,
+      );
+    }
+  }
+  // 기록 자체가 바뀌지 않았는지 확인합니다. 링크만 고쳐야 합니다.
+  const after = ctx.__out[arrayName][index];
+  if (after.name !== target.name || after.gameTime !== target.gameTime) {
+    throw new Error("수정 결과가 예상과 다릅니다. 중단합니다.");
+  }
+
+  fs.writeFileSync(filePath, updated, "utf8");
+  return after;
+}
+
+/**
+ * 배열의 index 번째 항목이 차지하는 텍스트 범위를 찾습니다.
+ *
+ * 원본에는 주석과 주석 처리된 항목이 섞여 있으므로,
+ * 문자열·주석을 감안해 중괄호 깊이를 세며 실제 항목만 셉니다.
+ */
+function findItemRange(src, arrayName, index) {
+  const startRe = new RegExp(`const\\s+${arrayName}\\s*=\\s*\\[`);
+  const m = startRe.exec(src);
+  if (!m) throw new Error(`data.js 에서 ${arrayName} 을(를) 찾을 수 없습니다.`);
+
+  let i = m.index + m[0].length;
+  let depth = 0;
+  let count = -1;
+  let itemStart = -1;
+  let quote = null;
+  let inLineComment = false;
+
+  for (; i < src.length; i++) {
+    const ch = src[i];
+
+    if (inLineComment) {
+      if (ch === "\n") inLineComment = false;
+      continue;
+    }
+    if (quote) {
+      if (ch === "\\") i++;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'" || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "/" && src[i + 1] === "/") {
+      inLineComment = true;
+      i++;
+      continue;
+    }
+
+    if (ch === "{") {
+      if (depth === 0) {
+        count++;
+        itemStart = i;
+      }
+      depth++;
+    } else if (ch === "}") {
+      depth--;
+      if (depth === 0 && count === index) {
+        return { start: itemStart, end: i + 1 };
+      }
+    } else if (ch === "]" && depth === 0) {
+      break; // 배열 끝
+    }
+  }
+  throw new Error(`${arrayName}[${index}] 의 위치를 찾지 못했습니다.`);
+}
+
 /** 제출 종류 → data.js 배열 이름 */
 function arrayNameFor(sub) {
   if (sub.kind === "speedrun") return "SPEEDRUN_DATA";
@@ -460,4 +616,6 @@ module.exports = {
   decorateName,
   baseName,
   serializeItem,
+  listRecords,
+  updateRecordUrls,
 };
