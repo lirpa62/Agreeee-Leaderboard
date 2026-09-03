@@ -699,7 +699,10 @@ h2 {
 
   .chart-canvas-wrap {
     flex: none;
-    width: 880px; /* 산점도가 읽히는 최소 폭 */
+    /* 공간이 있으면 채우고, 좁아지면 880px 를 유지한 채 가로 스크롤.
+       고정 폭으로 두면 넓은 화면에서 오른쪽에 빈 공간이 생깁니다. */
+    width: 100%;
+    min-width: 880px;
     height: 460px;
   }
 
@@ -735,7 +738,12 @@ h2 {
   .shortcut-item,
   .speedrun-item,
   .pending-item {
+    /* width:100% 만 주면 padding·border 가 더해져 섹션 밖으로 넘칩니다.
+       (li 기본값이 content-box 이므로) */
+    box-sizing: border-box;
     width: 100%;
+    /* 긴 이름·기록이 한 줄에 안 들어갈 때 줄바꿈 */
+    flex-wrap: wrap;
   }
 
   /* 섹션 제목이 길어 넘칠 때 줄바꿈 허용 */
@@ -778,7 +786,7 @@ h2 {
   }
 
   .chart-canvas-wrap {
-    width: 720px;
+    min-width: 720px;
     height: 400px;
   }
 
