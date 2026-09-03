@@ -128,8 +128,18 @@ h2 {
   color: #888;
 }
 
-/* 캔버스가 컨트롤 영역을 제외한 남은 공간을 채우도록.
-   Chart.js가 부모 높이를 참조하므로 래퍼에 높이를 위임합니다. */
+/* 차트 스크롤 래퍼.
+   모바일에서만 가로 스크롤이 켜지지만, 데스크톱에서도 이 요소가
+   .chart-section(flex column)의 자식이므로 높이를 이어받아야 합니다.
+   이 규칙이 없으면 높이가 0 으로 잡혀 Chart.js 가 기본값 150px 로
+   렌더링됩니다. */
+.chart-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .chart-canvas-wrap {
   position: relative;
   flex: 1 1 auto;
@@ -677,6 +687,9 @@ h2 {
   /* 차트는 가로 스크롤 컨테이너 안에서 원래 폭을 유지합니다.
      화면에 맞춰 줄이면 점과 라벨이 뭉개져 읽을 수 없습니다. */
   .chart-scroll {
+    /* 세로 배치에서는 높이를 내용(캔버스)에 맡깁니다 */
+    flex: none;
+    display: block;
     overflow-x: auto;
     overflow-y: hidden;
     -webkit-overflow-scrolling: touch;
@@ -685,6 +698,7 @@ h2 {
   }
 
   .chart-canvas-wrap {
+    flex: none;
     width: 880px; /* 산점도가 읽히는 최소 폭 */
     height: 460px;
   }
