@@ -666,3 +666,18 @@ body {
     flex: 1 1 100%;
   }
 }
+
+/* 필드별 오류 안내 (URL 형식·도메인) */
+.field-error {
+  margin: 5px 0 0;
+  padding: 5px 9px;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #6d1a1e;
+  background: #fdf0f0;
+  border: 1px solid #c1272d;
+}
+
+.field-error[hidden] {
+  display: none;
+}

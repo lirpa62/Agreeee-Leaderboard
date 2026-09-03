@@ -173,6 +173,86 @@ $("checkChannelBtn").addEventListener("click", async () => {
   }
 });
 
+/* ---------------------------------------------------------
+   URL 검증 (서버와 같은 규칙 — 제출 전에 미리 알려줍니다)
+   서버에서도 반드시 다시 검증합니다. 클라이언트 검사는 우회 가능합니다.
+   --------------------------------------------------------- */
+const CHZZK_HOSTS = ["chzzk.naver.com"];
+const YOUTUBE_HOSTS = ["youtube.com", "youtu.be", "m.youtube.com"];
+
+function hostOf(url) {
+  try {
+    return new URL(String(url).trim()).hostname.toLowerCase();
+  } catch {
+    return "";
+  }
+}
+
+function checkUrlField(inputId, errorId, hosts, hint, { required = false } = {}) {
+  const el = $(inputId);
+  const box = $(errorId);
+  const url = el.value.trim();
+
+  const fail = (msg) => {
+    box.hidden = false;
+    box.textContent = msg;
+    return false;
+  };
+  const ok = () => {
+    box.hidden = true;
+    box.textContent = "";
+    return true;
+  };
+
+  if (!url) return required ? fail("필수 항목입니다.") : ok();
+  if (url.length > 500) return fail("주소가 너무 깁니다. (500자 이내)");
+
+  let u;
+  try {
+    u = new URL(url);
+  } catch {
+    return fail("올바른 주소 형식이 아닙니다.");
+  }
+  // http/https 외의 스킴은 허용하지 않습니다.
+  if (u.protocol !== "http:" && u.protocol !== "https:") {
+    return fail("http(s):// 로 시작하는 주소여야 합니다.");
+  }
+
+  const host = hostOf(url);
+  const matched = hosts.some((d) => host === d || host.endsWith(`.${d}`));
+  if (!matched) return fail(hint);
+
+  return ok();
+}
+
+function validateUrlFields() {
+  const a = checkUrlField(
+    "channelUrl",
+    "channelUrlError",
+    CHZZK_HOSTS,
+    "치지직 채널 주소(chzzk.naver.com)만 입력할 수 있습니다.",
+    { required: true },
+  );
+  const b = checkUrlField(
+    "clipUrl",
+    "clipUrlError",
+    CHZZK_HOSTS,
+    "치지직 클립 주소(chzzk.naver.com)만 입력할 수 있습니다.",
+  );
+  const c = checkUrlField(
+    "vodUrl",
+    "vodUrlError",
+    [...CHZZK_HOSTS, ...YOUTUBE_HOSTS],
+    "치지직 또는 유튜브 다시보기 주소만 입력할 수 있습니다.",
+  );
+  return a && b && c;
+}
+
+// 입력에서 벗어날 때 즉시 안내
+["channelUrl", "clipUrl", "vodUrl"].forEach((id) =>
+  $(id).addEventListener("blur", validateUrlFields),
+);
+
 function numOr0(id) {
   const v = parseFloat($(id).value);
   return Number.isFinite(v) ? v : 0;
@@ -242,6 +322,12 @@ $("submitForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const btn = $("submitBtn");
   const kind = document.querySelector('input[name="kind"]:checked').value;
+
+  // URL 형식·도메인 확인 (서버에서도 다시 검증합니다)
+  if (!validateUrlFields()) {
+    showErrors(["주소를 다시 확인해 주세요."]);
+    return;
+  }
 
   // 회차 시간이 비정상적으로 길면 한 번 더 확인받습니다. (막지는 않습니다)
   if (checkGameTime() === "warn") {

@@ -1,9 +1,12 @@
 /**
  * 제출 검증
  *
- * 팔로워 기준은 '클리어 시점' 인데 API 가 주는 값은 '현재' 입니다.
- * 따라서 경계에서 충분히 멀 때만 자동 판정하고,
- * 경계 근처는 관리자 확인으로 넘깁니다.
+ * 팔로워 판정은 '현재' 값만 봅니다.
+ * 클리어 시점에 기준 미만이었더라도 현시점에 기준을 넘으면 등록 가능합니다.
+ *
+ * URL 은 프로토콜과 호스트를 화이트리스트로 제한합니다.
+ * 제출된 주소는 관리자 화면에 링크로 노출되므로,
+ * javascript:/data: 같은 스킴이나 임의 도메인을 그대로 받으면 안 됩니다.
  */
 
 const { formatParts, validateParts, parseTime } = require("./time");
@@ -19,8 +22,8 @@ const THRESHOLDS = { record: 10000, speedrun: 3000 };
 const GAME_TIME_MAX_MIN = 33;
 const GAME_TIME_WARN_MIN = 60;
 
-// 기준 ±20% 는 '경계 근처'로 보고 자동 판정하지 않습니다.
-const MARGIN_RATIO = 0.2;
+/** URL 길이 상한 (비정상적으로 긴 입력 차단) */
+const MAX_URL_LENGTH = 500;
 
 function isHttpUrl(value) {
   if (!value) return false;
@@ -34,10 +37,47 @@ function isHttpUrl(value) {
 
 function safeHost(value) {
   try {
-    return new URL(String(value).trim()).hostname;
+    return new URL(String(value).trim()).hostname.toLowerCase();
   } catch {
     return "";
   }
+}
+
+/** 호스트가 허용 목록에 있는지 (정확히 일치하거나 서브도메인) */
+function hostMatches(host, allowed) {
+  return allowed.some((d) => host === d || host.endsWith(`.${d}`));
+}
+
+// 증빙으로 받을 수 있는 도메인
+const CHZZK_HOSTS = ["chzzk.naver.com"];
+// 치지직 다시보기는 파트너가 아니면 일정 기간 후 삭제되므로 유튜브도 허용합니다.
+const YOUTUBE_HOSTS = ["youtube.com", "youtu.be", "m.youtube.com"];
+
+/**
+ * URL 을 검증합니다.
+ *
+ * @param {string} value    입력값
+ * @param {string} label    오류 메시지에 쓸 이름
+ * @param {string[]} hosts  허용 호스트 목록
+ * @param {string} hostHint 호스트 불일치 시 안내 문구
+ * @returns {string|null}   오류 메시지 (없으면 null)
+ */
+function validateUrl(value, label, hosts, hostHint) {
+  const url = String(value || "").trim();
+  if (!url) return null; // 빈 값은 호출부에서 필수 여부를 판단
+
+  if (url.length > MAX_URL_LENGTH) {
+    return `${label}가 너무 깁니다. (${MAX_URL_LENGTH}자 이내)`;
+  }
+  // http/https 만 허용 — javascript:, data:, file: 등 차단
+  if (!isHttpUrl(url)) {
+    return `${label}는 http(s):// 로 시작하는 올바른 주소여야 합니다.`;
+  }
+  const host = safeHost(url);
+  if (!hostMatches(host, hosts)) {
+    return `${label}: ${hostHint}`;
+  }
+  return null;
 }
 
 /**
@@ -91,10 +131,14 @@ function validateSubmission(body) {
   const channelUrl = String(body.channelUrl || "").trim();
   if (!channelUrl) {
     errors.push("치지직 채널 주소를 입력해 주세요.");
-  } else if (!isHttpUrl(channelUrl)) {
-    errors.push("채널 주소가 올바른 URL 이 아닙니다.");
-  } else if (!/(^|\.)chzzk\.naver\.com$/i.test(safeHost(channelUrl))) {
-    errors.push("치지직 채널 주소(chzzk.naver.com)를 입력해 주세요.");
+  } else {
+    const err = validateUrl(
+      channelUrl,
+      "채널 주소",
+      CHZZK_HOSTS,
+      "치지직 채널 주소(chzzk.naver.com)만 입력할 수 있습니다.",
+    );
+    if (err) errors.push(err);
   }
 
   // 클리어 시간 (본 게임) — 필수
@@ -111,8 +155,26 @@ function validateSubmission(body) {
 
   const clipUrl = String(body.clipUrl || "").trim();
   const vodUrl = String(body.vodUrl || "").trim();
-  if (clipUrl && !isHttpUrl(clipUrl)) errors.push("클립 주소가 올바르지 않습니다.");
-  if (vodUrl && !isHttpUrl(vodUrl)) errors.push("다시보기 주소가 올바르지 않습니다.");
+
+  // 클립은 치지직만 (유튜브에는 '클립' 개념이 다름)
+  const clipErr = validateUrl(
+    clipUrl,
+    "클립 주소",
+    CHZZK_HOSTS,
+    "치지직 클립 주소(chzzk.naver.com)만 입력할 수 있습니다.",
+  );
+  if (clipErr) errors.push(clipErr);
+
+  // 다시보기는 치지직 + 유튜브
+  // (치지직 다시보기는 파트너가 아니면 일정 기간 후 삭제됩니다)
+  const vodErr = validateUrl(
+    vodUrl,
+    "다시보기 주소",
+    [...CHZZK_HOSTS, ...YOUTUBE_HOSTS],
+    "치지직 또는 유튜브 다시보기 주소만 입력할 수 있습니다.",
+  );
+  if (vodErr) errors.push(vodErr);
+
   if (!clipUrl && !vodUrl) {
     errors.push("클립 또는 다시보기 주소 중 하나는 반드시 필요합니다.");
   }
@@ -141,9 +203,13 @@ function validateSubmission(body) {
 /**
  * 팔로워 수로 자동 판정.
  * 반환: { verdict, note }
- *   pass   - 기준을 충분히 넘음 (자동 통과 가능)
- *   fail   - 기준에 충분히 못 미침 (반려 후보)
- *   review - 경계 근처이거나 조회 실패 → 사람이 확인
+ *   pass   - 기준 충족
+ *   fail   - 기준 미달
+ *   review - 채널을 확정하지 못해 판정 불가 → 사람이 확인
+ *
+ * 판정은 '현재' 팔로워 수만 봅니다.
+ * 클리어 시점에 기준 미만이었더라도 현시점에 기준을 넘으면 등록 가능하므로,
+ * 경계 근처를 따로 확인 대상으로 돌리지 않습니다.
  */
 function judgeFollowers(kind, followerCount, verifyStatus) {
   const threshold = THRESHOLDS[kind] ?? THRESHOLDS.record;
@@ -155,25 +221,52 @@ function judgeFollowers(kind, followerCount, verifyStatus) {
     };
   }
 
-  const upper = threshold * (1 + MARGIN_RATIO);
-  const lower = threshold * (1 - MARGIN_RATIO);
-
-  if (followerCount >= upper) {
+  if (followerCount >= threshold) {
     return {
       verdict: "pass",
       note: `현재 팔로워 ${followerCount.toLocaleString()}명 (기준 ${threshold.toLocaleString()}명 충족)`,
     };
   }
-  if (followerCount < lower) {
+  return {
+    verdict: "fail",
+    note: `현재 팔로워 ${followerCount.toLocaleString()}명 — 기준 ${threshold.toLocaleString()}명에 미달합니다.`,
+  };
+}
+
+/**
+ * 관리자가 승인 시 직접 고친 시간 문자열을 검증합니다.
+ *
+ * data.js 에 그대로 들어가는 값이라 표기가 어긋나면 차트·정렬이 깨집니다.
+ * 기존 표기와 같은 형식('1시간 30분 54초', '14분 54.62초')만 허용합니다.
+ *
+ * @returns {{ok: true, value: string} | {ok: false, error: string}}
+ */
+function validateTimeString(value, label, { allowEmpty = false } = {}) {
+  const raw = String(value || "").trim();
+  if (!raw) {
+    if (allowEmpty) return { ok: true, value: null };
+    return { ok: false, error: `${label}을(를) 입력해 주세요.` };
+  }
+  if (raw.length > 40) {
+    return { ok: false, error: `${label} 표기가 너무 깁니다.` };
+  }
+  // 허용: [N시간] [N분] [N(.NN)초] — 최소 한 단위는 있어야 합니다.
+  const pattern =
+    /^(?:(\d{1,3})시간)?\s*(?:(\d{1,2})분)?\s*(?:(\d{1,2}(?:\.\d{1,2})?)초)?$/;
+  const m = pattern.exec(raw);
+  if (!m || (!m[1] && !m[2] && !m[3])) {
     return {
-      verdict: "fail",
-      note: `현재 팔로워 ${followerCount.toLocaleString()}명 — 기준 ${threshold.toLocaleString()}명에 미달합니다. (클리어 시점에는 달랐을 수 있으니 확인 필요)`,
+      ok: false,
+      error: `${label} 표기가 올바르지 않습니다. (예: 1시간 30분 54초 / 14분 54.62초)`,
     };
   }
-  return {
-    verdict: "review",
-    note: `현재 팔로워 ${followerCount.toLocaleString()}명 — 기준(${threshold.toLocaleString()}명) 근처이므로 클리어 시점 확인이 필요합니다.`,
-  };
+  const min = m[2] ? Number(m[2]) : 0;
+  const sec = m[3] ? Number(m[3]) : 0;
+  if (min > 59) return { ok: false, error: `${label}: 분은 0~59 여야 합니다.` };
+  if (sec >= 60) return { ok: false, error: `${label}: 초는 60 미만이어야 합니다.` };
+
+  // 공백을 한 칸으로 정규화해 기존 표기와 맞춥니다.
+  return { ok: true, value: raw.replace(/\s+/g, " ") };
 }
 
 /**
@@ -195,6 +288,8 @@ module.exports = {
   judgeFollowers,
   compareNames,
   checkGameTimeOutlier,
+  validateTimeString,
+  validateUrl,
   THRESHOLDS,
   GAME_TIME_MAX_MIN,
   isHttpUrl,

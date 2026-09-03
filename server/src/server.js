@@ -18,6 +18,7 @@ const {
   judgeFollowers,
   compareNames,
   checkGameTimeOutlier,
+  validateTimeString,
 } = require("./validate");
 const dataFile = require("./dataFile");
 const git = require("./git");
@@ -398,19 +399,48 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
       hasRetryToo: req.body?.hasRetryToo === true,
     });
 
+    // 관리자가 시간도 고쳐 승인할 수 있습니다.
+    // (증빙을 보니 제출값과 다른 경우 — 반려 후 재제출을 요구하지 않아도 됩니다)
+    const gameCheck = validateTimeString(
+      req.body?.gameTime || sub.game_time,
+      "클리어한 회차 시간",
+    );
+    if (!gameCheck.ok) {
+      return res.status(400).json({ ok: false, error: gameCheck.error });
+    }
+
+    // 스피드런은 약관 시간이 없습니다.
+    const tosCheck = validateTimeString(
+      req.body?.tosTime ?? sub.tos_time,
+      "이용약관과 마주한 시간",
+      { allowEmpty: true },
+    );
+    if (!tosCheck.ok) {
+      return res.status(400).json({ ok: false, error: tosCheck.error });
+    }
+
+    const finalGameTime = gameCheck.value;
+    const finalTosTime = sub.kind === "speedrun" ? null : tosCheck.value;
+
     const applied = dataFile.applySubmission({
       name: finalName,
-      gameTime: sub.game_time,
-      tosTime: sub.tos_time,
+      gameTime: finalGameTime,
+      tosTime: finalTosTime,
       color: sub.color,
       arrayName: dataFile.arrayNameFor(sub),
     });
 
-    // 실제 등록된 이름을 DB 에도 반영해 두어야
-    // 나중에 승인 취소 시 같은 이름으로 찾을 수 있습니다.
-    if (finalName !== sub.streamer_name) {
-      db.updateStreamerName(sub.id, finalName);
+    // 실제 등록된 값을 DB 에도 반영해 두어야
+    // 나중에 승인 취소 시 같은 값으로 찾을 수 있습니다.
+    if (
+      finalName !== sub.streamer_name ||
+      finalGameTime !== sub.game_time ||
+      finalTosTime !== sub.tos_time
+    ) {
+      db.updateApprovedRecord(sub.id, finalName, finalGameTime, finalTosTime);
       sub.streamer_name = finalName;
+      sub.game_time = finalGameTime;
+      sub.tos_time = finalTosTime;
     }
 
     // 커밋·푸시는 하지 않습니다. Netlify 배포 크레딧을 아끼기 위해

@@ -165,6 +165,22 @@ function updateStreamerName(id, name) {
 }
 
 /**
+ * 실제 등록된 이름·시간으로 갱신합니다.
+ *
+ * 승인 시 관리자가 값을 고쳤다면 data.js 에 들어간 값과 DB 값이
+ * 일치해야 합니다. 어긋나면 승인 취소 때 항목을 찾지 못합니다.
+ */
+function updateApprovedRecord(id, name, gameTime, tosTime) {
+  return db
+    .prepare(
+      `UPDATE submissions
+       SET streamer_name = ?, game_time = ?, tos_time = ?
+       WHERE id = ?`,
+    )
+    .run(name, gameTime, tosTime, id);
+}
+
+/**
  * 승인 취소 — 상태를 되돌리고 사유를 남깁니다.
  *
  * ⚠ published_at 을 반드시 NULL 로 되돌려야 합니다.
@@ -294,6 +310,7 @@ module.exports = {
   getSubmission,
   setStatus,
   updateStreamerName,
+  updateApprovedRecord,
   revertApproval,
   getPublicStatus,
   findByName,

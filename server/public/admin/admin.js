@@ -126,6 +126,22 @@ function cardHtml(row) {
                }
              </div>
              <div class="approve-row">
+               <label class="approve-field">
+                 <span>클리어 회차</span>
+                 <input class="xp-input reg-game" value="${esc(row.game_time)}"
+                        placeholder="예) 14분 54.62초" />
+               </label>
+               ${
+                 row.kind === "speedrun"
+                   ? ""
+                   : `<label class="approve-field">
+                        <span>이용약관</span>
+                        <input class="xp-input reg-tos" value="${esc(row.tos_time || "")}"
+                               placeholder="예) 1시간 30분 54초" />
+                      </label>`
+               }
+             </div>
+             <div class="approve-row">
                <input class="xp-input note" placeholder="처리 메모 (선택)" />
                <button type="button" class="xp-button" data-act="recheck">팔로워 재조회</button>
                <button type="button" class="xp-button danger" data-act="reject">반려</button>
@@ -320,18 +336,37 @@ listEl.addEventListener("click", async (e) => {
   const regName = regNameEl ? regNameEl.value.trim() : "";
   const hasRetryToo = !!(hasRetryEl && hasRetryEl.checked);
 
+  // 관리자가 고칠 수 있는 시간 값
+  const regGame = card.querySelector(".reg-game")?.value.trim() || "";
+  const regTosEl = card.querySelector(".reg-tos");
+  const regTos = regTosEl ? regTosEl.value.trim() : "";
+
   if (act === "approve") {
     if (!regName) {
       flash(card, "err", "등록될 이름을 입력해 주세요.");
       return;
     }
+    if (!regGame) {
+      flash(card, "err", "클리어 회차 시간을 입력해 주세요.");
+      return;
+    }
+    if (regTosEl && !regTos) {
+      flash(card, "err", "이용약관과 마주한 시간을 입력해 주세요.");
+      return;
+    }
+
     const isRetry = card.querySelector(".league")?.textContent.includes("재도전");
     let preview = regName;
     if (isRetry && !preview.includes("*")) preview += "*";
     else if (hasRetryToo && !preview.includes("🎈")) preview += "🎈";
 
+    // 실제로 등록될 값을 모두 보여주고 확인받습니다.
     const go = await xpConfirm(
-      `data.js 에 다음 이름으로 등록합니다.\n\n    ${preview}\n\n계속할까요?`,
+      `data.js 에 다음 값으로 등록합니다.\n\n` +
+        `    이름  ${preview}\n` +
+        `    회차  ${regGame}` +
+        (regTosEl ? `\n    약관  ${regTos}` : "") +
+        `\n\n계속할까요?`,
       { title: "승인", okLabel: "승인" },
     );
     if (!go) return;
@@ -371,6 +406,8 @@ listEl.addEventListener("click", async (e) => {
         note,
         reason: revertReason,
         name: regName || undefined,
+        gameTime: regGame || undefined,
+        tosTime: regTosEl ? regTos : undefined,
         hasRetryToo,
       }),
     });

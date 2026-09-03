@@ -762,3 +762,10 @@ a {
 body.login-page .error {
   margin: 7px 0 0;
 }
+
+/* 승인 시 수정 가능한 시간 입력 */
+.approve-field .reg-game,
+.approve-field .reg-tos {
+  font-family: "Consolas", "Menlo", monospace;
+  font-weight: normal;
+}
