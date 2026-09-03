@@ -20,7 +20,12 @@ StandardError=journal
 SyslogIdentifier=agreeee-server
 
 # 기본적인 보안 격리
-NoNewPrivileges=true
+#
+# ⚠ NoNewPrivileges 는 켜지 않습니다.
+#   켜면 이 서비스 안에서 sudo 가 아예 동작하지 않아(setuid 상승 금지)
+#   GitHub 웹훅 자동 배포의 재시작이 실패합니다.
+#   자동 배포를 쓰지 않는다면 아래 주석을 풀어 켜 두는 편이 안전합니다.
+# NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=full
 # data.js 를 커밋해야 하므로 저장소 전체에 쓰기가 필요합니다.

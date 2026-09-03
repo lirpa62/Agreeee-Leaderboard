@@ -187,9 +187,10 @@ DEPLOY_BRANCH=main
 2. `sudo` 비밀번호 없이 재시작할 수 있게 허용합니다.
 
 ```bash
-echo "$USER ALL=(root) NOPASSWD: /bin/systemctl restart agreeee-server" \
+echo "$USER ALL=(root) NOPASSWD: /usr/bin/systemd-run, /bin/systemctl restart agreeee-server" \
   | sudo tee /etc/sudoers.d/agreeee-deploy
 sudo chmod 440 /etc/sudoers.d/agreeee-deploy
+sudo visudo -c   # 문법 확인 (틀리면 sudo 가 전부 막히므로 꼭 확인)
 ```
 
 3. GitHub 저장소 → Settings → Webhooks → **Add webhook**
