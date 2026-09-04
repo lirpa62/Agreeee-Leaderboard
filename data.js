@@ -100,8 +100,6 @@ const STREAMER_COLORS = {
   플레임: "#e2012d",
   녹두로: "#390",
 
-  // 대기
-
   //런?
   릴카: "#c0c4ff",
   매직박: "#ff6600",
@@ -1364,7 +1362,6 @@ const SHORTCUT_DATA = [
     channelUrl: "https://chzzk.naver.com/a9a343510e132ea3026ff3cf682820b5",
     clipUrl: "https://chzzk.naver.com/clips/GpGCxkFvF5",
   },
-  // { name: "계춘회🎈", gameTime: "21분 57초", tosTime: "2시간 22분 42초" },
   {
     name: "조별하",
     gameTime: "21분 24초",
