@@ -190,8 +190,120 @@ async function resolveChannel({ channelUrl, streamerName }) {
   return await searchChannelByName(streamerName);
 }
 
+/* ─────────────── 증빙(클립·다시보기)의 소유 채널 확인 ─────────────── */
+
+/** 치지직 클립 주소에서 클립 UID 를 뽑습니다. */
+function extractClipUid(url) {
+  const m = /chzzk\.naver\.com\/clips\/([A-Za-z0-9_-]+)/.exec(String(url || ""));
+  return m ? m[1] : null;
+}
+
+/** 치지직 다시보기 주소에서 영상 번호를 뽑습니다. */
+function extractVideoNo(url) {
+  const m = /chzzk\.naver\.com\/video\/(\d+)/.exec(String(url || ""));
+  return m ? m[1] : null;
+}
+
+/** 유튜브 주소에서 영상 id 를 뽑습니다. (watch / youtu.be / shorts / live) */
+function extractYouTubeId(url) {
+  const s = String(url || "");
+  const m =
+    /[?&]v=([A-Za-z0-9_-]{11})/.exec(s) ||
+    /youtu\.be\/([A-Za-z0-9_-]{11})/.exec(s) ||
+    /\/(?:shorts|live|embed)\/([A-Za-z0-9_-]{11})/.exec(s);
+  return m ? m[1] : null;
+}
+
+/**
+ * 증빙이 어느 채널의 것인지 조회합니다.
+ *
+ * 남의 클립·다시보기를 자기 기록의 증빙으로 낼 수 있으므로,
+ * 제출한 채널과 같은 채널에서 만들어진 것인지 확인합니다.
+ *
+ * @returns {{ok:boolean, kind:string, channelId?, channelName?, reason?}}
+ *   ok=false 여도 '조회 실패'일 수 있으니 차단이 아니라 경고로 씁니다.
+ */
+async function resolveEvidenceOwner(url) {
+  const raw = String(url || "").trim();
+  if (!raw) return { ok: false, kind: "empty", reason: "주소가 없습니다." };
+
+  const clipUid = extractClipUid(raw);
+  if (clipUid) {
+    const json = await fetchJson(
+      `${API_BASE}/clips/${encodeURIComponent(clipUid)}/detail` +
+        `?optionalProperties=OWNER_CHANNEL`,
+    );
+    const ch = json?.content?.optionalProperty?.ownerChannel;
+    if (!ch?.channelId) {
+      return {
+        ok: false,
+        kind: "clip",
+        reason: "클립을 찾지 못했습니다. (삭제되었거나 비공개일 수 있습니다)",
+      };
+    }
+    return {
+      ok: true,
+      kind: "clip",
+      channelId: ch.channelId,
+      channelName: String(ch.channelName || ""),
+    };
+  }
+
+  const videoNo = extractVideoNo(raw);
+  if (videoNo) {
+    // 영상 상세는 v2 에만 있습니다.
+    const json = await fetchJson(
+      `https://api.chzzk.naver.com/service/v2/videos/${encodeURIComponent(videoNo)}`,
+    );
+    const ch = json?.content?.channel;
+    if (!ch?.channelId) {
+      return {
+        ok: false,
+        kind: "video",
+        reason: "다시보기를 찾지 못했습니다. (삭제되었거나 비공개일 수 있습니다)",
+      };
+    }
+    return {
+      ok: true,
+      kind: "video",
+      channelId: ch.channelId,
+      channelName: String(ch.channelName || ""),
+    };
+  }
+
+  const ytId = extractYouTubeId(raw);
+  if (ytId) {
+    // 유튜브는 채널을 치지직 채널 ID 와 대조할 수 없습니다.
+    // oEmbed 로 업로더 이름만 얻어 이름이 비슷한지 확인하는 데 씁니다.
+    const json = await fetchJson(
+      `https://www.youtube.com/oembed?url=${encodeURIComponent(
+        `https://www.youtube.com/watch?v=${ytId}`,
+      )}&format=json`,
+    );
+    if (!json?.author_name) {
+      return {
+        ok: false,
+        kind: "youtube",
+        reason: "유튜브 영상 정보를 확인하지 못했습니다.",
+      };
+    }
+    return {
+      ok: true,
+      kind: "youtube",
+      channelName: String(json.author_name || ""),
+      title: String(json.title || ""),
+    };
+  }
+
+  return { ok: false, kind: "unknown", reason: "주소 형식을 알 수 없습니다." };
+}
+
 module.exports = {
   extractChannelId,
+  extractClipUid,
+  extractVideoNo,
+  extractYouTubeId,
+  resolveEvidenceOwner,
   getChannelById,
   searchChannelByName,
   resolveChannel,

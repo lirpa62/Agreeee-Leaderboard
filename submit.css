@@ -949,3 +949,9 @@ body {
 .suggest-item.active .suggest-tags {
   color: #dbe6f7;
 }
+
+/* 선택해도 등록되지 않는 항목임을 미리 알려 줍니다. */
+.check-note {
+  color: #c1272d;
+  font-size: 0.72rem;
+}

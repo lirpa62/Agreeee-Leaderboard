@@ -240,9 +240,11 @@
                 <input type="checkbox" id="isRetry" data-league /> 숏컷 사용 후
                 노풍선으로 재도전한 기록입니다
               </label>
+              <!-- 캐주얼 모드는 어느 리그에도 등재되지 않습니다.
+                   선택하면 안내만 하고 되돌립니다. (submit.js) -->
               <label class="check">
                 <input type="checkbox" id="isCasual" data-league /> 캐주얼 모드로
-                진행했습니다
+                진행했습니다 <span class="check-note">(등록 불가)</span>
               </label>
             </div>
           </fieldset>

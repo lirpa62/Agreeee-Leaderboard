@@ -315,6 +315,68 @@ app.get(
 );
 
 /** 기록 제출 */
+/**
+ * 증빙(클립·다시보기)이 제출한 스트리머의 채널에서 나온 것인지 확인합니다.
+ *
+ * 치지직은 채널 ID 로 정확히 대조할 수 있습니다.
+ * 유튜브는 대조할 ID 가 없어 업로더 이름만 비교하고, 다르면 '확인 필요'
+ * 로만 남깁니다. (본인 채널에 다른 이름을 쓰는 경우가 흔합니다)
+ *
+ * @returns {Promise<string[]>} 검증 메모에 덧붙일 문구들
+ */
+async function checkEvidenceOwners(v, channel) {
+  const notes = [];
+  const targets = [
+    { url: v.clipUrl, label: "클립" },
+    { url: v.vodUrl, label: "다시보기" },
+  ].filter((t) => t.url);
+
+  for (const t of targets) {
+    let info;
+    try {
+      info = await chzzk.resolveEvidenceOwner(t.url);
+    } catch (e) {
+      notes.push(`⚠️ ${t.label} 확인 실패: ${e.message}`);
+      continue;
+    }
+
+    if (!info.ok) {
+      notes.push(`⚠️ ${t.label} 확인 필요: ${info.reason}`);
+      continue;
+    }
+
+    if (info.kind === "youtube") {
+      // 업로더 이름에 스트리머 이름이 들어 있으면 통과로 봅니다.
+      const cmp = compareNames(v.streamerName, info.channelName);
+      if (cmp.match === "different") {
+        notes.push(
+          `⚠️ ${t.label} 확인 필요: 유튜브 업로더 '${info.channelName}' 이(가) ` +
+            `'${v.streamerName}' 과(와) 달라 보입니다`,
+        );
+      }
+      continue;
+    }
+
+    // 치지직: 채널 ID 로 정확히 대조합니다.
+    if (channel?.channelId && info.channelId) {
+      if (channel.channelId !== info.channelId) {
+        notes.push(
+          `🚨 ${t.label}이(가) 다른 채널의 것입니다: '${info.channelName}'`,
+        );
+      }
+      continue;
+    }
+    // 제출자 채널을 확정하지 못했으면 이름으로만 비교합니다.
+    const cmp = compareNames(v.streamerName, info.channelName);
+    if (cmp.match === "different") {
+      notes.push(
+        `⚠️ ${t.label} 소유 채널 '${info.channelName}' 확인 필요`,
+      );
+    }
+  }
+  return notes;
+}
+
 app.post(
   "/api/submissions",
   rateLimit({ windowMs: 10 * 60_000, max: 5 }),
@@ -422,6 +484,14 @@ app.post(
       ]
         .filter(Boolean)
         .join(" / ");
+    }
+
+    // 증빙이 정말 이 스트리머의 채널에서 나온 것인지 확인합니다.
+    // 남의 클립·다시보기를 자기 기록의 증빙으로 낼 수 있기 때문입니다.
+    // 조회 실패도 있을 수 있어 차단하지 않고 메모로만 남깁니다.
+    const evidenceNotes = await checkEvidenceOwners(v, channel);
+    if (evidenceNotes.length) {
+      verifyNote = [verifyNote, ...evidenceNotes].filter(Boolean).join(" / ");
     }
 
     // 제출자가 스스로 취소할 때 쓸 토큰.

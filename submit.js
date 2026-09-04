@@ -152,6 +152,21 @@ document.querySelectorAll("#recordOnlyChecks input[data-league]").forEach((el) =
   el.addEventListener("change", () => {
     if (!el.checked) return;
 
+    // 캐주얼 모드는 어느 리그에도 등재되지 않습니다.
+    // (제 3 조 — 인정협회가 인정하지 않는 기록)
+    // 선택하게 두면 제출까지 갔다가 반려되므로 여기서 되돌립니다.
+    if (el.id === "isCasual") {
+      el.checked = false;
+      xpModal(
+        `캐주얼 모드 기록은 등록되지 않습니다.\n\n` +
+          `명예의 전당과 스피드런 모두 클래식 모드 기록만 등재됩니다.\n` +
+          `캐주얼 모드로 클리어하셨다면 클래식 모드로 다시 도전해 주세요.\n\n` +
+          `(제 3 조에 의거하여 인정협회는 캐주얼 모드를 인정하지 아니합니다)`,
+        { title: "인정협회", symbol: "!" },
+      );
+      return;
+    }
+
     const others = [...document.querySelectorAll("#recordOnlyChecks input[data-league]")]
       .filter((o) => o !== el && o.checked);
     if (!others.length) return;
