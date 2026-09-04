@@ -241,11 +241,18 @@ async function resolveEvidenceOwner(url) {
         reason: "클립을 찾지 못했습니다. (삭제되었거나 비공개일 수 있습니다)",
       };
     }
+    const c = json.content;
     return {
       ok: true,
       kind: "clip",
       channelId: ch.channelId,
       channelName: String(ch.channelName || ""),
+      // 제출 화면 미리보기에 씁니다. 사람이 눈으로 확인하는 편이
+      // 주소만 대조하는 것보다 확실합니다.
+      title: String(c.clipTitle || ""),
+      thumbnailUrl: String(c.thumbnailImageUrl || ""),
+      duration: Number(c.duration) || null,
+      createdDate: String(c.createdDate || ""),
     };
   }
 
@@ -263,11 +270,16 @@ async function resolveEvidenceOwner(url) {
         reason: "다시보기를 찾지 못했습니다. (삭제되었거나 비공개일 수 있습니다)",
       };
     }
+    const c = json.content;
     return {
       ok: true,
       kind: "video",
       channelId: ch.channelId,
       channelName: String(ch.channelName || ""),
+      title: String(c.videoTitle || ""),
+      thumbnailUrl: String(c.thumbnailImageUrl || ""),
+      duration: Number(c.duration) || null,
+      createdDate: String(c.publishDate || ""),
     };
   }
 

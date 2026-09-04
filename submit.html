@@ -123,6 +123,7 @@
                 <input type="color" id="colorPicker" value="#333333" />
               </div>
               <p class="hint">차트와 목록에 표시될 이름 색상입니다. (선택)</p>
+              <p class="field-error" id="colorError" hidden></p>
             </div>
           </fieldset>
 
@@ -266,6 +267,9 @@
               />
               <p class="hint">치지직 클립 주소만 입력할 수 있습니다.</p>
               <p class="field-error" id="clipUrlError" hidden></p>
+              <!-- 주소를 넣으면 서버가 조회해 썸네일과 소유 채널을 보여 줍니다.
+                   (치지직 API 는 CORS 를 막아 브라우저에서 직접 못 부릅니다) -->
+              <div class="evidence-preview" id="clipPreview" hidden></div>
             </div>
             <div class="field">
               <label for="vodUrl">다시보기 주소</label>

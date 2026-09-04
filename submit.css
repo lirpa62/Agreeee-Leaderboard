@@ -955,3 +955,69 @@ body {
   color: #c1272d;
   font-size: 0.72rem;
 }
+
+/* ---------------------------------------------------------
+   증빙 미리보기 (치지직 클립)
+   --------------------------------------------------------- */
+.evidence-preview {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 7px;
+  padding: 8px 10px;
+  background: #f7f6f0;
+  border: 1px solid #c9c4b4;
+  font-size: 0.76rem;
+  line-height: 1.6;
+}
+
+.evidence-preview[hidden] {
+  display: none;
+}
+
+.evidence-preview.ok {
+  border-color: #9dc79a;
+  background: #f1f8f0;
+}
+
+.evidence-preview.warn {
+  border-color: #e3d9a0;
+  background: #fdfbe5;
+}
+
+.evidence-thumb {
+  flex: 0 0 auto;
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border: 1px solid #b9b4a4;
+  background: #fff;
+}
+
+.evidence-info {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.evidence-info p {
+  margin: 0;
+}
+
+.evidence-title {
+  font-weight: bold;
+  color: #222;
+  /* 제목이 길어도 한 줄로 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.evidence-meta {
+  color: #777;
+  font-size: 0.72rem;
+}
+
+.evidence-verdict {
+  margin-top: 3px !important;
+  color: #444;
+}

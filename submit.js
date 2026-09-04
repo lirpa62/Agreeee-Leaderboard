@@ -189,10 +189,126 @@ document.querySelectorAll("#recordOnlyChecks input[data-league]").forEach((el) =
 /* 색상 입력과 색상 선택기 연동 */
 $("colorPicker").addEventListener("input", (e) => {
   $("color").value = e.target.value.toUpperCase();
+  checkColor();
 });
 $("color").addEventListener("input", (e) => {
   const v = e.target.value.trim();
   if (/^#[0-9a-f]{6}$/i.test(v)) $("colorPicker").value = v;
+  checkColor();
+});
+
+/**
+ * 색상 형식 확인. 비어 있으면(선택 항목) 통과합니다.
+ * 서버도 같은 규칙으로 다시 검사합니다 — 프론트 검증은 편의일 뿐입니다.
+ */
+function checkColor() {
+  const box = $("colorError");
+  const v = $("color").value.trim();
+  if (!v || /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) {
+    box.hidden = true;
+    return true;
+  }
+  box.hidden = false;
+  box.textContent = "색상 코드는 #RRGGBB 형식이어야 합니다. (예: #00FFA3)";
+  return false;
+}
+
+/* ---------------------------------------------------------
+   치지직 클립 미리보기
+   주소를 넣으면 썸네일과 소유 채널을 보여 줍니다.
+   남의 클립을 잘못 붙여 넣는 실수를 제출 전에 잡습니다.
+   --------------------------------------------------------- */
+let clipPreviewSeq = 0;
+
+async function previewClip() {
+  const box = $("clipPreview");
+  const url = $("clipUrl").value.trim();
+
+  if (!url || !/chzzk\.naver\.com\/clips\//.test(url)) {
+    box.hidden = true;
+    return;
+  }
+
+  const seq = ++clipPreviewSeq;
+  box.hidden = false;
+  box.className = "evidence-preview";
+  box.textContent = "클립을 확인하는 중…";
+
+  try {
+    const params = new URLSearchParams({ url });
+    const ch = $("channelUrl").value.trim();
+    if (ch) params.set("channelUrl", ch);
+
+    const res = await fetch(`${API_BASE}/api/evidence?${params}`);
+    const json = await res.json();
+    if (seq !== clipPreviewSeq) return; // 더 최근 입력이 있으면 버립니다.
+
+    if (!json.ok || !json.evidence?.ok) {
+      box.className = "evidence-preview warn";
+      box.textContent =
+        json.evidence?.reason || json.error || "클립을 확인하지 못했습니다.";
+      return;
+    }
+
+    const e = json.evidence;
+    // match 가 false 면 다른 채널의 클립입니다.
+    box.className = `evidence-preview ${json.match === false ? "warn" : "ok"}`;
+    box.innerHTML = "";
+
+    if (e.thumbnailUrl) {
+      const img = document.createElement("img");
+      img.className = "evidence-thumb";
+      img.src = e.thumbnailUrl;
+      img.alt = "";
+      img.loading = "lazy";
+      box.appendChild(img);
+    }
+
+    const info = document.createElement("div");
+    info.className = "evidence-info";
+
+    const title = document.createElement("p");
+    title.className = "evidence-title";
+    title.textContent = e.title || "(제목 없음)";
+    info.appendChild(title);
+
+    const meta = document.createElement("p");
+    meta.className = "evidence-meta";
+    const parts = [`채널: ${e.channelName}`];
+    if (e.duration) parts.push(`${e.duration}초`);
+    if (e.createdDate) parts.push(e.createdDate.slice(0, 10));
+    meta.textContent = parts.join(" · ");
+    info.appendChild(meta);
+
+    const verdict = document.createElement("p");
+    verdict.className = "evidence-verdict";
+    if (json.match === true) {
+      verdict.textContent = "✅ 입력하신 채널의 클립이 맞습니다.";
+    } else if (json.match === false) {
+      verdict.textContent =
+        `⚠️ 입력하신 채널과 다른 채널('${e.channelName}')의 클립입니다. 확인해 주세요.`;
+    } else {
+      verdict.textContent =
+        "ℹ️ 채널 주소를 함께 입력하시면 같은 채널인지 확인해 드립니다.";
+    }
+    info.appendChild(verdict);
+
+    box.appendChild(info);
+  } catch {
+    if (seq !== clipPreviewSeq) return;
+    box.className = "evidence-preview";
+    box.textContent = "클립 정보를 불러오지 못했습니다. (제출에는 지장 없습니다)";
+  }
+}
+
+let clipTimer = null;
+$("clipUrl").addEventListener("input", () => {
+  clearTimeout(clipTimer);
+  clipTimer = setTimeout(previewClip, 500);
+});
+// 채널 주소가 나중에 채워질 수도 있으니 그때도 다시 확인합니다.
+$("channelUrl").addEventListener("blur", () => {
+  if ($("clipUrl").value.trim()) previewClip();
 });
 
 /* ---------------------------------------------------------
@@ -608,6 +724,17 @@ $("submitForm").addEventListener("submit", async (e) => {
       $("gameH").focus();
       return;
     }
+  }
+
+  if (!checkColor()) {
+    xpModal(
+      `이름 색상 코드를 확인해 주세요.\n\n` +
+        `#RRGGBB 형식이어야 합니다. (예: #00FFA3)\n` +
+        `비워 두시면 기본 색상이 쓰입니다.`,
+      { title: "색상 확인", symbol: "!" },
+    );
+    $("color").focus();
+    return;
   }
 
   // 캡차가 켜져 있는데 아직 인증하지 않았으면 서버에 보내기 전에 안내

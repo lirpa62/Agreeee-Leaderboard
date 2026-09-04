@@ -314,6 +314,46 @@ app.get(
   },
 );
 
+/**
+ * 증빙 미리보기 — 제출 전에 클립·다시보기를 확인합니다.
+ *
+ * 치지직 API 는 CORS 를 막아 브라우저에서 직접 부를 수 없으므로
+ * 서버가 대신 조회합니다. 썸네일·제목을 함께 돌려주어 사람이 눈으로
+ * 확인할 수 있게 합니다. (주소만 대조하는 것보다 확실합니다)
+ */
+app.get(
+  "/api/evidence",
+  rateLimit({ windowMs: 60_000, max: 30 }),
+  async (req, res) => {
+    const url = String(req.query.url || "").trim();
+    if (!url) {
+      return res.status(400).json({ ok: false, error: "url 이 필요합니다." });
+    }
+    // 아무 주소나 서버가 대신 호출하지 않도록 도메인을 제한합니다.
+    const err = validateUrl(
+      url,
+      "증빙 주소",
+      [...CHZZK_HOSTS, ...YOUTUBE_HOSTS],
+      "치지직 또는 유튜브 주소만 확인할 수 있습니다.",
+    );
+    if (err) return res.status(400).json({ ok: false, error: err });
+
+    try {
+      const info = await chzzk.resolveEvidenceOwner(url);
+      // 제출한 채널과 대조할 수 있도록 채널 주소도 받습니다.
+      const channelUrl = String(req.query.channelUrl || "").trim();
+      let match = null;
+      if (info.ok && info.channelId && channelUrl) {
+        const id = chzzk.extractChannelId(channelUrl);
+        if (id) match = id === info.channelId;
+      }
+      res.json({ ok: true, evidence: info, match });
+    } catch (e) {
+      res.status(502).json({ ok: false, error: `조회에 실패했습니다: ${e.message}` });
+    }
+  },
+);
+
 /** 기록 제출 */
 /**
  * 증빙(클립·다시보기)이 제출한 스트리머의 채널에서 나온 것인지 확인합니다.
