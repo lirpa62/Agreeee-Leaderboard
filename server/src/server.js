@@ -32,6 +32,51 @@ const notify = require("./notify");
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
 
+/**
+ * 지원 게임 목록.
+ *
+ * 후속작이 나오면 리더보드는 저장소·Netlify 배포를 나누되 제출 서버는
+ * 하나를 씁니다. (OCI 프리티어 인스턴스가 하나뿐입니다)
+ * 게임마다 고칠 data.js 와 커밋할 저장소가 다르므로 여기서 묶어 둡니다.
+ *
+ * 새 게임을 추가하려면 여기에 한 줄과 .env 두 줄만 더하면 됩니다.
+ */
+const GAMES = {
+  agreeee: {
+    label: "이용약관에 동의하고 싶어",
+    dataJsPath: process.env.DATA_JS_PATH || null, // null 이면 dataFile 기본값
+    repoDir: process.env.REPO_DIR || null,
+  },
+};
+
+// 후속작은 환경 변수가 있을 때만 켜집니다.
+// (설정하지 않으면 지금과 완전히 동일하게 동작합니다)
+if (process.env.NOWLOADING_DATA_JS_PATH) {
+  GAMES.nowloading = {
+    label: "NowLoading이 끝나지 않아",
+    dataJsPath: process.env.NOWLOADING_DATA_JS_PATH,
+    repoDir: process.env.NOWLOADING_REPO_DIR || null,
+  };
+}
+
+/**
+ * 요청에서 게임을 골라냅니다. 값이 없거나 모르는 값이면 기본 게임입니다.
+ * (기존 클라이언트는 game 을 보내지 않으므로 그대로 동작합니다)
+ */
+function pickGame(req) {
+  const raw = String(
+    req.query?.game || req.body?.game || "",
+  ).trim();
+  return Object.prototype.hasOwnProperty.call(GAMES, raw)
+    ? raw
+    : db.DEFAULT_GAME;
+}
+
+/** 그 게임의 data.js 경로 (null 이면 dataFile 기본값을 씁니다) */
+function dataPathFor(game) {
+  return GAMES[game]?.dataJsPath || undefined;
+}
+
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 
@@ -165,7 +210,8 @@ app.get("/api/config", (req, res) => {
  * data.js 를 매 요청마다 파싱하면 낭비이므로 짧게 캐시합니다.
  * (발행으로 파일이 바뀌어도 1분 안에 반영됩니다)
  */
-let streamerCache = { at: 0, rows: [] };
+// 게임마다 data.js 가 다르므로 캐시도 게임별로 나눠 담습니다.
+const streamerCache = new Map();
 const STREAMER_CACHE_MS = 60_000;
 
 app.get(
@@ -173,13 +219,16 @@ app.get(
   rateLimit({ windowMs: 60_000, max: 120 }),
   (req, res) => {
     try {
+      const game = pickGame(req);
       const now = Date.now();
-      if (now - streamerCache.at > STREAMER_CACHE_MS) {
-        streamerCache = { at: now, rows: dataFile.listStreamers() };
+      let cached = streamerCache.get(game);
+      if (!cached || now - cached.at > STREAMER_CACHE_MS) {
+        cached = { at: now, rows: dataFile.listStreamers(dataPathFor(game)) };
+        streamerCache.set(game, cached);
       }
 
       const q = String(req.query.q || "").trim().toLowerCase();
-      let rows = streamerCache.rows;
+      let rows = cached.rows;
       if (q) {
         // 앞에서부터 일치하는 것을 먼저 보여 줍니다.
         const starts = [];
@@ -282,7 +331,7 @@ app.get(
         .status(400)
         .json({ ok: false, error: "스트리머 이름을 두 글자 이상 입력해 주세요." });
     }
-    res.json({ ok: true, rows: db.findByName(name) });
+    res.json({ ok: true, rows: db.findByName(name, pickGame(req)) });
   },
 );
 
@@ -293,7 +342,7 @@ app.get(
   (req, res) => {
     // 정적 리더보드가 호출하므로 캐시를 길게 둡니다.
     res.setHeader("Cache-Control", "public, max-age=120");
-    res.json({ ok: true, rows: db.listPendingPublic(30) });
+    res.json({ ok: true, rows: db.listPendingPublic(30, pickGame(req)) });
   },
 );
 
@@ -438,13 +487,14 @@ app.post(
       return res.status(400).json({ ok: false, errors: checked.errors });
     }
     const v = checked.value;
+    const game = pickGame(req);
 
     // 스피드런은 갱신제입니다. 기존 기록보다 느리거나 같으면
     // 등록해도 순위가 그대로라 접수하지 않습니다.
     // (관리자가 검토할 이유가 없는 제출을 미리 걸러냅니다)
     if (v.kind === "speedrun") {
       try {
-        const best = dataFile.bestSpeedrun(v.streamerName);
+        const best = dataFile.bestSpeedrun(v.streamerName, dataPathFor(game));
         const now = dataFile.parseTimeToMinutes(v.gameTime);
         if (best && now != null && now >= best.minutes) {
           const same = now === best.minutes;
@@ -472,7 +522,7 @@ app.post(
     }
 
     // 중복 대기 제출 방지
-    const dup = db.findPendingDuplicate(v.kind, v.streamerName);
+    const dup = db.findPendingDuplicate(v.kind, v.streamerName, game);
     if (dup) {
       return res.status(409).json({
         ok: false,
@@ -548,6 +598,7 @@ app.post(
       verifyNote: [verifyNote, judged.note].filter(Boolean).join(" / "),
       submitterIp: req.ip,
       cancelToken,
+      game,
     });
 
     // 알림은 응답을 막지 않도록 await 하지 않습니다.
@@ -602,10 +653,11 @@ app.post("/api/admin/logout", (req, res) => {
 
 app.get("/api/admin/submissions", requireAdmin, (req, res) => {
   const status = String(req.query.status || "pending");
+  const game = pickGame(req);
   res.json({
     ok: true,
-    counts: db.countByStatus(),
-    rows: db.listSubmissions({ status, limit: 200 }),
+    counts: db.countByStatus(game),
+    rows: db.listSubmissions({ status, limit: 200, game }),
   });
 });
 
@@ -668,6 +720,9 @@ app.post("/api/admin/submissions/:id/recheck", requireAdmin, async (req, res) =>
 /** 승인 → data.js 반영 (+ 선택적 Git 커밋) */
 app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) => {
   const sub = db.getSubmission(Number(req.params.id));
+  // ⚠ 요청 파라미터가 아니라 제출에 기록된 게임을 씁니다.
+  //   요청을 믿으면 다른 게임의 data.js 를 고칠 수 있습니다.
+  const game = sub?.game || db.DEFAULT_GAME;
   if (!sub) return res.status(404).json({ ok: false, error: "제출을 찾을 수 없습니다." });
   if (sub.status !== "pending") {
     return res.status(409).json({ ok: false, error: "이미 처리된 제출입니다." });
@@ -734,13 +789,13 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
       channelUrl: sub.channel_url,
       clipUrl: sub.clip_url,
       vodUrl: sub.vod_url,
-    });
+    }, dataPathFor(game));
 
     // 관리자가 색을 직접 지정했다면 기존 색도 덮어씁니다.
     // (applySubmission 의 addColor 는 이미 있는 이름은 건드리지 않습니다)
     if (overrideColor) {
       try {
-        dataFile.setStreamerColor(finalName, overrideColor);
+        dataFile.setStreamerColor(finalName, overrideColor, dataPathFor(game));
       } catch (e) {
         console.warn(`[승인] 색상 반영 실패: ${e.message}`);
       }
@@ -758,7 +813,7 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
     let balloon = null;
     if (sub.is_retry) {
       try {
-        balloon = dataFile.markShortcutBalloon(rawName);
+        balloon = dataFile.markShortcutBalloon(rawName, dataPathFor(game));
       } catch (e) {
         balloon = { updated: false, reason: e.message };
       }
@@ -781,7 +836,7 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
     // 여러 건을 모아 '발행' 버튼으로 한 번에 처리합니다.
     db.setStatus(sub.id, "approved", String(req.body?.note || ""));
 
-    const unpublished = db.countUnpublished();
+    const unpublished = db.countUnpublished(game);
     notify.notifyReviewed(sub, "approved", {
       note: req.body?.note,
       unpublished,
@@ -810,6 +865,9 @@ app.post("/api/admin/submissions/:id/reject", requireAdmin, (req, res) => {
  */
 app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => {
   const sub = db.getSubmission(Number(req.params.id));
+  // ⚠ 요청 파라미터가 아니라 제출에 기록된 게임을 씁니다.
+  //   요청을 믿으면 다른 게임의 data.js 를 고칠 수 있습니다.
+  const game = sub?.game || db.DEFAULT_GAME;
   if (!sub) return res.status(404).json({ ok: false, error: "제출을 찾을 수 없습니다." });
   if (sub.status !== "approved") {
     return res
@@ -827,13 +885,13 @@ app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => 
       gameTime: sub.game_time,
       tosTime: sub.tos_time,
       arrayName: dataFile.arrayNameFor(sub),
-    });
+    }, dataPathFor(game));
 
     // 재도전이 사라졌으면 숏컷 기록의 🎈도 함께 떼어냅니다.
     let balloon = null;
     if (sub.is_retry) {
       try {
-        balloon = dataFile.unmarkShortcutBalloon(sub.streamer_name);
+        balloon = dataFile.unmarkShortcutBalloon(sub.streamer_name, dataPathFor(game));
       } catch (e) {
         balloon = { updated: false, reason: e.message };
       }
@@ -843,7 +901,7 @@ app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => 
     // 아직 발행 전이었다면 추가·삭제가 상쇄되므로 발행할 것이 없습니다.
     db.reopenSubmission(sub.id, String(req.body?.note || ""), wasPublished);
 
-    const unpublished = db.countUnpublished();
+    const unpublished = db.countUnpublished(game);
     notify.notifyReviewed(sub, "reopened", {
       note: req.body?.note,
       // 발행 전이었다면 추가·삭제가 상쇄되어 발행할 것이 없습니다.
@@ -872,6 +930,9 @@ app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => 
  */
 app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => {
   const sub = db.getSubmission(Number(req.params.id));
+  // ⚠ 요청 파라미터가 아니라 제출에 기록된 게임을 씁니다.
+  //   요청을 믿으면 다른 게임의 data.js 를 고칠 수 있습니다.
+  const game = sub?.game || db.DEFAULT_GAME;
   if (!sub) return res.status(404).json({ ok: false, error: "제출을 찾을 수 없습니다." });
   if (sub.status !== "approved") {
     return res
@@ -887,7 +948,7 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
       gameTime: sub.game_time,
       tosTime: sub.tos_time,
       arrayName: dataFile.arrayNameFor(sub),
-    });
+    }, dataPathFor(game));
 
     // 재도전이 사라졌으면 숏컷 기록의 🎈도 떼어냅니다.
     // (🎈는 '재도전도 함께 있는 사람' 이라는 뜻이므로)
@@ -895,7 +956,7 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
     let balloon = null;
     if (sub.is_retry) {
       try {
-        balloon = dataFile.unmarkShortcutBalloon(sub.streamer_name);
+        balloon = dataFile.unmarkShortcutBalloon(sub.streamer_name, dataPathFor(game));
       } catch (e) {
         balloon = { updated: false, reason: e.message };
       }
@@ -904,7 +965,7 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
     // 삭제도 발행 대상입니다. (커밋은 '발행' 시 한 번에)
     db.revertApproval(sub.id, reason, String(req.body?.note || ""));
 
-    const unpublished = db.countUnpublished();
+    const unpublished = db.countUnpublished(game);
     notify.notifyReviewed(sub, "reverted", {
       reason,
       note: req.body?.note,
@@ -937,10 +998,11 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
  * 그래서 data.js 에 실제 변경이 있는지 함께 확인해 알려줍니다.
  */
 app.get("/api/admin/unpublished", requireAdmin, async (req, res) => {
-  const rows = db.listUnpublished();
+  const game = pickGame(req);
+  const rows = db.listUnpublished(game);
   let dirty = null;
   try {
-    dirty = await git.hasPendingChanges();
+    dirty = await git.hasPendingChanges(GAMES[game]?.repoDir || undefined);
   } catch {
     dirty = null; // git 확인 실패 시 판단 보류
   }
@@ -958,7 +1020,7 @@ app.get("/api/admin/unpublished", requireAdmin, async (req, res) => {
 /** data.js 의 모든 기록을 링크와 함께 나열합니다. */
 app.get("/api/admin/records", requireAdmin, (req, res) => {
   try {
-    res.json({ ok: true, rows: dataFile.listRecords() });
+    res.json({ ok: true, rows: dataFile.listRecords(dataPathFor(pickGame(req))) });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
   }
@@ -1015,7 +1077,7 @@ app.post("/api/admin/records/urls", requireAdmin, (req, res) => {
   }
 
   try {
-    const updated = dataFile.updateRecordUrls(arrayName, index, urls);
+    const updated = dataFile.updateRecordUrls(arrayName, index, urls, dataPathFor(pickGame(req)));
     res.json({ ok: true, updated });
   } catch (e) {
     res.status(400).json({ ok: false, error: e.message });
@@ -1042,7 +1104,7 @@ app.post("/api/admin/records/verify", requireAdmin, async (req, res) => {
 
   let record;
   try {
-    record = dataFile.listRecords().find(
+    record = dataFile.listRecords(dataPathFor(pickGame(req))).find(
       (r) => r.arrayName === arrayName && r.index === index,
     );
   } catch (e) {
@@ -1116,7 +1178,8 @@ app.post("/api/admin/records/verify", requireAdmin, async (req, res) => {
  * 모아서 한 번만 발행하면 15 크레딧으로 끝납니다.
  */
 app.post("/api/admin/publish", requireAdmin, async (req, res) => {
-  const items = db.listUnpublished();
+  const game = pickGame(req);
+  const items = db.listUnpublished(game);
   if (!items.length) {
     return res
       .status(409)
@@ -1124,7 +1187,7 @@ app.post("/api/admin/publish", requireAdmin, async (req, res) => {
   }
 
   try {
-    const result = await git.publishBatch(items);
+    const result = await git.publishBatch(items, GAMES[game]?.repoDir || undefined);
 
     // data.js 에 변경이 없다면(수동 커밋 등) 발행 완료로 정리만 합니다.
     if (result.alreadyClean) {

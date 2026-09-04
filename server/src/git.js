@@ -85,12 +85,12 @@ async function commitDataFile(submission, options = {}) {
  *
  * @param {Array} items - db.listUnpublished() 결과
  */
-async function publishBatch(items) {
+async function publishBatch(items, repoDir = REPO_DIR) {
   if (!items.length) {
     return { published: false, reason: "발행할 변경 사항이 없습니다." };
   }
 
-  const status = await run(["status", "--porcelain", "--", "data.js"]);
+  const status = await run(["status", "--porcelain", "--", "data.js"], repoDir);
   if (!status) {
     // 파일에 변경이 없는데 미발행 건이 남아 있다면,
     // 이미 수동으로 커밋했을 가능성이 큽니다. 발행 완료로 처리하도록 알립니다.
@@ -143,21 +143,21 @@ async function publishBatch(items) {
 
   const message = `${subject}\n\n${lines.join("\n")}`;
 
-  await run(["add", "--", "data.js"]);
-  await run(["commit", "-m", message]);
-  const sha = await run(["rev-parse", "--short", "HEAD"]);
+  await run(["add", "--", "data.js"], repoDir);
+  await run(["commit", "-m", message], repoDir);
+  const sha = await run(["rev-parse", "--short", "HEAD"], repoDir);
 
   let pushed = false;
   if (AUTO_PUSH) {
-    await run(["push"]);
+    await run(["push"], repoDir);
     pushed = true;
   }
   return { published: true, sha, pushed, count: items.length };
 }
 
 /** data.js 에 커밋되지 않은 변경이 있는지 */
-async function hasPendingChanges() {
-  const status = await run(["status", "--porcelain", "--", "data.js"]);
+async function hasPendingChanges(repoDir = REPO_DIR) {
+  const status = await run(["status", "--porcelain", "--", "data.js"], repoDir);
   return Boolean(status);
 }
 

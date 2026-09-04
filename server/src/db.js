@@ -13,6 +13,12 @@ const Database = require("better-sqlite3");
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 fs.mkdirSync(DATA_DIR, { recursive: true });
 
+/**
+ * 게임 구분자. 저장소가 나뉘어도 제출 서버는 하나를 씁니다.
+ * 기존 데이터는 모두 'agreeee' 입니다.
+ */
+const DEFAULT_GAME = "agreeee";
+
 const db = new Database(path.join(DATA_DIR, "submissions.db"));
 db.pragma("journal_mode = WAL");
 
@@ -81,6 +87,26 @@ if (!existingCols.has("cancelled_at")) {
 }
 
 /**
+ * 어느 게임의 기록인지.
+ *
+ * 후속작('NowLoading이 끝나지 않아')이 나오면 리더보드는 저장소·배포를
+ * 나누되 제출 서버는 하나로 씁니다. OCI 프리티어 인스턴스가 하나뿐이라
+ * 서버를 둘 띄울 이유가 없습니다.
+ *
+ * 기존 행은 전부 'agreeee' 입니다.
+ */
+if (!existingCols.has("game")) {
+  db.exec(
+    "ALTER TABLE submissions ADD COLUMN game TEXT NOT NULL DEFAULT 'agreeee'",
+  );
+  // 인덱스도 게임별로 좁혀 두어야 목록 조회가 빨라집니다.
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_game_status " +
+      "ON submissions(game, status, created_at DESC)",
+  );
+}
+
+/**
  * 발행(Git 커밋+푸시) 여부.
  *
  * Netlify 는 배포 1회당 크레딧을 소모하므로, 승인할 때마다 푸시하면
@@ -112,12 +138,12 @@ INSERT INTO submissions (
   kind, streamer_name, color, channel_url,
   channel_id, channel_name, follower_count, verify_status, verify_note,
   game_time, tos_time, is_shortcut, is_retry, is_casual,
-  clip_url, vod_url, submitter_ip, cancel_token
+  clip_url, vod_url, submitter_ip, cancel_token, game
 ) VALUES (
   @kind, @streamer_name, @color, @channel_url,
   @channel_id, @channel_name, @follower_count, @verify_status, @verify_note,
   @game_time, @tos_time, @is_shortcut, @is_retry, @is_casual,
-  @clip_url, @vod_url, @submitter_ip, @cancel_token
+  @clip_url, @vod_url, @submitter_ip, @cancel_token, @game
 )
 `);
 
@@ -141,26 +167,29 @@ function insertSubmission(row) {
     vod_url: row.vodUrl || null,
     submitter_ip: row.submitterIp || null,
     cancel_token: row.cancelToken || null,
+    game: row.game || DEFAULT_GAME,
   });
   return info.lastInsertRowid;
 }
 
-function listSubmissions({ status = "pending", limit = 100 } = {}) {
+function listSubmissions({ status = "pending", limit = 100, game = DEFAULT_GAME } = {}) {
   if (status === "all") {
     // 제출자가 스스로 취소한 건은 검토할 것이 없으므로 '전체'에서도 뺍니다.
     // (status=cancelled 로 명시하면 볼 수 있습니다)
     return db
       .prepare(
-        `SELECT * FROM submissions WHERE status != 'cancelled'
+        `SELECT * FROM submissions
+         WHERE game = ? AND status != 'cancelled'
          ORDER BY created_at DESC LIMIT ?`,
       )
-      .all(limit);
+      .all(game, limit);
   }
   return db
     .prepare(
-      "SELECT * FROM submissions WHERE status = ? ORDER BY created_at DESC LIMIT ?",
+      `SELECT * FROM submissions WHERE game = ? AND status = ?
+       ORDER BY created_at DESC LIMIT ?`,
     )
-    .all(status, limit);
+    .all(game, status, limit);
 }
 
 function getSubmission(id) {
@@ -178,10 +207,12 @@ function setStatus(id, status, adminNote) {
     .run(status, adminNote || null, id);
 }
 
-function countByStatus() {
+function countByStatus(game = DEFAULT_GAME) {
   const rows = db
-    .prepare("SELECT status, COUNT(*) AS n FROM submissions GROUP BY status")
-    .all();
+    .prepare(
+      "SELECT status, COUNT(*) AS n FROM submissions WHERE game = ? GROUP BY status",
+    )
+    .all(game);
   const out = { pending: 0, approved: 0, rejected: 0 };
   for (const r of rows) out[r.status] = r.n;
   return out;
@@ -307,7 +338,7 @@ function getPublicStatus(id) {
  * 반려 이력을 들여다볼 수 있게 되기 때문입니다.
  * 상세 사유는 접수 번호를 아는 사람만 볼 수 있습니다. (getPublicStatus)
  */
-function findByName(name) {
+function findByName(name, game = DEFAULT_GAME) {
   const keyword = String(name || "").trim();
   if (!keyword) return [];
   return db
@@ -316,41 +347,42 @@ function findByName(name) {
               is_shortcut, is_retry, is_casual, created_at, reviewed_at,
               published_at
        FROM submissions
-       WHERE streamer_name LIKE ?
+       WHERE game = ? AND streamer_name LIKE ?
        ORDER BY
          CASE status WHEN 'pending' THEN 0 ELSE 1 END,
          created_at DESC
        LIMIT 20`,
     )
-    .all(`%${keyword}%`);
+    .all(game, `%${keyword}%`);
 }
 
 /** 리더보드 '검토 중' 섹션에 보여줄 대기 목록 (최소 정보만) */
-function listPendingPublic(limit = 30) {
+function listPendingPublic(limit = 30, game = DEFAULT_GAME) {
   return db
     .prepare(
       `SELECT id, kind, streamer_name, game_time, tos_time,
               is_shortcut, is_retry, created_at
        FROM submissions
-       WHERE status = 'pending'
+       WHERE game = ? AND status = 'pending'
        ORDER BY created_at DESC
        LIMIT ?`,
     )
-    .all(limit);
+    .all(game, limit);
 }
 
 /**
  * data.js 에는 반영됐지만 아직 발행(푸시)되지 않은 건들.
  * 승인뿐 아니라 승인취소(삭제)도 발행 대상입니다.
  */
-function listUnpublished() {
+function listUnpublished(game = DEFAULT_GAME) {
   return db
     .prepare(
       `SELECT id, kind, status, streamer_name, game_time, tos_time,
               is_shortcut, is_retry, revert_reason, reviewed_at,
               reopened_from_published
        FROM submissions
-       WHERE published_at IS NULL
+       WHERE game = ?
+         AND published_at IS NULL
          AND (
            -- 승인됐거나(추가), 승인취소됐거나(삭제)
            (reviewed_at IS NOT NULL
@@ -360,21 +392,22 @@ function listUnpublished() {
          )
        ORDER BY COALESCE(reviewed_at, created_at) ASC`,
     )
-    .all();
+    .all(game);
 }
 
-function countUnpublished() {
+function countUnpublished(game = DEFAULT_GAME) {
   return db
     .prepare(
       `SELECT COUNT(*) AS n FROM submissions
-       WHERE published_at IS NULL
+       WHERE game = ?
+         AND published_at IS NULL
          AND (
            (reviewed_at IS NOT NULL
             AND (status = 'approved' OR revert_reason IS NOT NULL))
            OR reopened_from_published = 1
          )`,
     )
-    .get().n;
+    .get(game).n;
 }
 
 /** 발행 완료 표시 (여러 건을 한 트랜잭션으로) */
@@ -386,13 +419,13 @@ const markPublished = db.transaction((ids) => {
 });
 
 /** 같은 스트리머의 중복 대기 제출 확인 (스팸/실수 방지) */
-function findPendingDuplicate(kind, streamerName) {
+function findPendingDuplicate(kind, streamerName, game = DEFAULT_GAME) {
   return db
     .prepare(
       `SELECT id FROM submissions
-       WHERE kind = ? AND streamer_name = ? AND status = 'pending'`,
+       WHERE game = ? AND kind = ? AND streamer_name = ? AND status = 'pending'`,
     )
-    .get(kind, streamerName);
+    .get(game, kind, streamerName);
 }
 
 /**
@@ -431,6 +464,7 @@ function cancelSubmission(id, token) {
 
 module.exports = {
   db,
+  DEFAULT_GAME,
   insertSubmission,
   listSubmissions,
   getSubmission,

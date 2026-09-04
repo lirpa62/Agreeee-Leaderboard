@@ -245,3 +245,45 @@ bash ~/agreeee_leaderboard/server/deploy/auto-deploy.sh
 `THIRD_PARTY_NOTICES.md`, `LICENSE`, `LICENSES/`, `.github/`
 
 `data.js` 나 `index.html` 등 공개 사이트 파일이 하나라도 바뀌면 정상 배포됩니다.
+
+## 여러 게임 지원
+
+후속작이 나오면 리더보드는 **저장소와 Netlify 배포를 나누되 제출 서버는
+하나**를 씁니다. OCI 프리티어 인스턴스가 하나뿐이라 서버를 둘 띄울
+이유가 없고, 제출량도 많지 않습니다.
+
+**설정**
+
+```ini
+# 기존 게임 (지금까지와 동일)
+DATA_JS_PATH=/home/ubuntu/agreeee_leaderboard/data.js
+REPO_DIR=/home/ubuntu/agreeee_leaderboard
+
+# 후속작 — 이 줄이 있을 때만 활성화됩니다
+NOWLOADING_DATA_JS_PATH=/home/ubuntu/nowloading_leaderboard/data.js
+NOWLOADING_REPO_DIR=/home/ubuntu/nowloading_leaderboard
+```
+
+**사용**
+
+API 에 `game` 을 붙이면 그 게임으로 처리됩니다. 생략하면 `agreeee` 이므로
+**기존 클라이언트는 고칠 필요가 없습니다.**
+
+```
+POST /api/submissions            { "game": "nowloading", ... }
+GET  /api/submissions/pending?game=nowloading
+GET  /api/streamers?game=nowloading&q=...
+GET  /api/admin/submissions?game=nowloading
+POST /api/admin/publish?game=nowloading
+```
+
+**설계상 주의한 점**
+
+- 개별 건 처리(승인·반려·되돌리기)는 **요청이 아니라 제출에 기록된
+  `game` 을 씁니다.** 요청 파라미터를 믿으면 다른 게임의 `data.js` 를
+  고칠 수 있습니다.
+- 미발행 목록·발행은 반드시 게임별로 나뉩니다. 섞이면 한 게임의 승인이
+  다른 게임의 `data.js` 커밋에 딸려 들어갑니다.
+- 중복 제출 검사도 게임별입니다. 같은 스트리머가 두 게임에 각각 제출할
+  수 있어야 합니다.
+- 모르는 `game` 값은 조용히 기본 게임으로 처리합니다.
