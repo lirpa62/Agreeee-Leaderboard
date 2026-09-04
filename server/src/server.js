@@ -174,6 +174,56 @@ app.get(
 );
 
 /**
+ * 제출 취소 (제출자 본인)
+ *
+ * 접수 번호와 취소 토큰이 모두 맞고, 아직 검토 대기 중일 때만 됩니다.
+ * 승인·반려 이후에는 관리자만 되돌릴 수 있습니다.
+ * (승인되면 data.js 가 이미 바뀌었고 발행됐을 수도 있습니다)
+ *
+ * 토큰을 찍어 맞히려는 시도를 막기 위해 제한을 둡니다.
+ */
+app.post(
+  "/api/submissions/:id/cancel",
+  rateLimit({ windowMs: 10 * 60_000, max: 10 }),
+  (req, res) => {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id) || id < 1) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "접수 번호가 올바르지 않습니다." });
+    }
+    const token = String(req.body?.token || "").trim();
+    if (!token) {
+      return res.status(400).json({ ok: false, error: "취소 코드를 입력해 주세요." });
+    }
+
+    const sub = db.getSubmission(id);
+    const result = db.cancelSubmission(id, token);
+
+    if (result === "not_found" || result === "bad_token") {
+      // 어느 쪽인지 알려 주지 않습니다.
+      // 구분해 주면 번호를 바꿔가며 존재 여부를 훑을 수 있습니다.
+      notify.recordRejection("제출 취소 인증 실패");
+      return res.status(403).json({
+        ok: false,
+        error: "접수 번호 또는 취소 코드가 올바르지 않습니다.",
+      });
+    }
+    if (result === "not_pending") {
+      return res.status(409).json({
+        ok: false,
+        reason: "not_pending",
+        error:
+          "이미 검토가 끝난 제출은 취소할 수 없습니다. 관리자에게 문의해 주세요.",
+      });
+    }
+
+    if (sub) notify.notifyReviewed(sub, "cancelled", {});
+    res.json({ ok: true, id });
+  },
+);
+
+/**
  * 스트리머 이름으로 제출 검색.
  * 상태(대기/승인/반려)는 보여주지만 반려 사유는 제외합니다.
  * 상세 사유는 접수 번호를 아는 사람만 볼 수 있습니다. (db.findByName 주석 참고)
@@ -330,6 +380,11 @@ app.post(
         .join(" / ");
     }
 
+    // 제출자가 스스로 취소할 때 쓸 토큰.
+    // 접수 번호만으로는 남의 제출을 취소할 수 있어 함께 요구합니다.
+    // 완료 화면에서 한 번만 보여 주므로 읽고 옮겨 적기 쉬운 길이로 둡니다.
+    const cancelToken = crypto.randomBytes(9).toString("base64url");
+
     const id = db.insertSubmission({
       ...v,
       channelId: channel?.channelId || null,
@@ -338,6 +393,7 @@ app.post(
       verifyStatus,
       verifyNote: [verifyNote, judged.note].filter(Boolean).join(" / "),
       submitterIp: req.ip,
+      cancelToken,
     });
 
     // 알림은 응답을 막지 않도록 await 하지 않습니다.
@@ -353,6 +409,8 @@ app.post(
     res.status(201).json({
       ok: true,
       id,
+      // 이 응답에서만 돌려줍니다. 이후 조회로는 다시 볼 수 없습니다.
+      cancelToken,
       verify: {
         status: verifyStatus,
         channelName: channel?.channelName || null,

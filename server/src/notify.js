@@ -146,6 +146,8 @@ function notifyReviewed(sub, action, extra = {}) {
     rejected: { title: "🚫 반려", color: COLORS.danger },
     reverted: { title: "↩️ 승인 취소 — 기록 삭제", color: COLORS.danger },
     reopened: { title: "🔄 대기로 되돌림 — 재검토", color: COLORS.warning },
+    // 관리자가 아니라 제출자 본인이 취소한 경우입니다.
+    cancelled: { title: "🗑 제출자가 취소함", color: COLORS.info },
   }[action] || { title: action, color: COLORS.info };
 
   const fields = [

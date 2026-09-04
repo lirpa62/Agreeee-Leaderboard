@@ -527,6 +527,8 @@ $("submitForm").addEventListener("submit", async (e) => {
       v.channelName && v.followerCount != null
         ? `접수 번호 #${json.id} · ${v.channelName} (팔로워 ${v.followerCount.toLocaleString()}명)`
         : `접수 번호 #${json.id}`;
+    // 취소 코드는 이 응답에서만 옵니다. 이후에는 다시 볼 수 없습니다.
+    $("doneToken").textContent = json.cancelToken || "(발급되지 않음)";
     // 상태 조회 페이지로 접수 번호를 넘겨 바로 확인할 수 있게 합니다.
     $("statusLink").href = `status.html?id=${json.id}`;
   } catch {

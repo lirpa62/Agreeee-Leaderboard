@@ -117,11 +117,63 @@
             </div>
           </div>
           <p class="status-msg" id="statusMsg"></p>
+
+          <!-- 검토 대기 중일 때만 보입니다. 제출 완료 화면에서 받은
+               취소 코드를 넣어야 본인 확인이 됩니다. -->
+          <div class="cancel-box" id="cancelBox" hidden>
+            <label class="cancel-label" for="cancelToken">취소 코드</label>
+            <div class="cancel-row">
+              <input
+                type="text"
+                id="cancelToken"
+                class="xp-input"
+                placeholder="제출 완료 화면에서 받은 코드"
+                autocomplete="off"
+              />
+              <button type="button" class="xp-button danger" id="cancelBtn">
+                제출 취소
+              </button>
+            </div>
+            <p class="cancel-hint">
+              잘못 제출하셨다면 취소한 뒤 다시 요청하실 수 있습니다.
+              코드를 잃어버리셨다면 관리자에게 문의해 주세요.
+            </p>
+          </div>
         </div>
 
         <div class="actions" style="margin-top: 18px">
           <a class="xp-button" href="index.html">리더보드</a>
           <a class="xp-button" href="submit.html">기록 등록 요청</a>
+        </div>
+      </div>
+    </div>
+
+    <div class="xp-modal-overlay" id="xpModalOverlay" hidden>
+      <div
+        class="xp-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="xpModalTitle"
+        aria-describedby="xpModalMsg"
+      >
+        <div class="xp-titlebar">
+          <span class="xp-titlebar-icon">📜</span>
+          <span class="xp-titlebar-text" id="xpModalTitle">알림</span>
+          <span class="xp-btns">
+            <button type="button" class="xp-btn close" id="xpModalX" title="닫기">
+              ✕
+            </button>
+          </span>
+        </div>
+        <div class="xp-modal-body">
+          <span class="xp-modal-icon" id="xpModalIcon">!</span>
+          <p class="xp-modal-msg" id="xpModalMsg"></p>
+        </div>
+        <div class="xp-modal-footer">
+          <button type="button" class="xp-button" id="xpModalCancel" hidden>
+            아니오
+          </button>
+          <button type="button" class="xp-button agree" id="xpModalOk">확인</button>
         </div>
       </div>
     </div>

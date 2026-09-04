@@ -7,6 +7,7 @@
 
 const path = require("path");
 const fs = require("fs");
+const crypto = require("crypto");
 const Database = require("better-sqlite3");
 
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
@@ -65,6 +66,21 @@ if (!existingCols.has("revert_reason")) {
 }
 
 /**
+ * 제출자가 스스로 취소할 때 쓰는 토큰.
+ *
+ * 접수 번호는 1, 2, 3… 으로 늘어나므로 번호만으로 취소를 허용하면
+ * 아무나 남의 제출을 취소할 수 있습니다. 제출 완료 화면에서만 보여 주는
+ * 랜덤 문자열을 함께 요구해 본인 확인을 대신합니다.
+ */
+if (!existingCols.has("cancel_token")) {
+  db.exec("ALTER TABLE submissions ADD COLUMN cancel_token TEXT");
+}
+/** 제출자가 취소한 시각 (status = 'cancelled') */
+if (!existingCols.has("cancelled_at")) {
+  db.exec("ALTER TABLE submissions ADD COLUMN cancelled_at TEXT");
+}
+
+/**
  * 발행(Git 커밋+푸시) 여부.
  *
  * Netlify 는 배포 1회당 크레딧을 소모하므로, 승인할 때마다 푸시하면
@@ -96,12 +112,12 @@ INSERT INTO submissions (
   kind, streamer_name, color, channel_url,
   channel_id, channel_name, follower_count, verify_status, verify_note,
   game_time, tos_time, is_shortcut, is_retry, is_casual,
-  clip_url, vod_url, submitter_ip
+  clip_url, vod_url, submitter_ip, cancel_token
 ) VALUES (
   @kind, @streamer_name, @color, @channel_url,
   @channel_id, @channel_name, @follower_count, @verify_status, @verify_note,
   @game_time, @tos_time, @is_shortcut, @is_retry, @is_casual,
-  @clip_url, @vod_url, @submitter_ip
+  @clip_url, @vod_url, @submitter_ip, @cancel_token
 )
 `);
 
@@ -124,15 +140,19 @@ function insertSubmission(row) {
     clip_url: row.clipUrl || null,
     vod_url: row.vodUrl || null,
     submitter_ip: row.submitterIp || null,
+    cancel_token: row.cancelToken || null,
   });
   return info.lastInsertRowid;
 }
 
 function listSubmissions({ status = "pending", limit = 100 } = {}) {
   if (status === "all") {
+    // 제출자가 스스로 취소한 건은 검토할 것이 없으므로 '전체'에서도 뺍니다.
+    // (status=cancelled 로 명시하면 볼 수 있습니다)
     return db
       .prepare(
-        "SELECT * FROM submissions ORDER BY created_at DESC LIMIT ?",
+        `SELECT * FROM submissions WHERE status != 'cancelled'
+         ORDER BY created_at DESC LIMIT ?`,
       )
       .all(limit);
   }
@@ -375,6 +395,40 @@ function findPendingDuplicate(kind, streamerName) {
     .get(kind, streamerName);
 }
 
+/**
+ * 제출자가 스스로 제출을 취소합니다.
+ *
+ * 접수 번호와 취소 토큰이 모두 맞아야 하고, 아직 검토 대기 중일 때만
+ * 됩니다. 승인·반려 이후에는 관리자만 되돌릴 수 있습니다.
+ * (승인 후에는 data.js 가 이미 바뀌었고 발행됐을 수도 있습니다)
+ *
+ * @returns {"ok"|"not_found"|"bad_token"|"not_pending"}
+ */
+function cancelSubmission(id, token) {
+  const row = db
+    .prepare("SELECT id, status, cancel_token FROM submissions WHERE id = ?")
+    .get(id);
+  if (!row) return "not_found";
+
+  // 토큰이 없는 옛 제출은 취소할 수 없습니다. (본인 확인 불가)
+  if (!row.cancel_token || !token) return "bad_token";
+
+  // 길이가 다르면 timingSafeEqual 이 던지므로 먼저 비교합니다.
+  const a = Buffer.from(String(token));
+  const b = Buffer.from(row.cancel_token);
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return "bad_token";
+  }
+  if (row.status !== "pending") return "not_pending";
+
+  db.prepare(
+    `UPDATE submissions
+     SET status = 'cancelled', cancelled_at = datetime('now')
+     WHERE id = ? AND status = 'pending'`,
+  ).run(id);
+  return "ok";
+}
+
 module.exports = {
   db,
   insertSubmission,
@@ -394,4 +448,5 @@ module.exports = {
   markPublished,
   countByStatus,
   findPendingDuplicate,
+  cancelSubmission,
 };

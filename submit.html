@@ -292,6 +292,17 @@
           <p class="hint">
             접수 번호를 적어두시면 언제든 처리 상태를 확인할 수 있습니다.
           </p>
+
+          <!-- 취소 코드는 이 화면에서만 보여 줍니다. 다시 조회할 수 없습니다. -->
+          <div class="token-box">
+            <p class="token-label">취소 코드</p>
+            <p class="token-value" id="doneToken"></p>
+            <p class="token-hint">
+              잘못 제출하셨다면 이 코드로 <strong>검토가 끝나기 전까지</strong>
+              취소하실 수 있습니다.
+              <strong>이 화면에서만 확인할 수 있으니 꼭 저장해 주세요.</strong>
+            </p>
+          </div>
           <div class="actions">
             <a class="xp-button agree" id="statusLink" href="status.html"
               >처리 상태 확인</a

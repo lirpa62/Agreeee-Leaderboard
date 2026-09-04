@@ -11,6 +11,49 @@ const API_BASE = (() => {
 
 const $ = (id) => document.getElementById(id);
 
+/* ─────────────────── XP 스타일 다이얼로그 ─────────────────── */
+
+let modalResolve = null;
+
+function closeXpModal(value) {
+  $("xpModalOverlay").hidden = true;
+  const done = modalResolve;
+  modalResolve = null;
+  if (done) done(value);
+}
+
+/**
+ * confirm:true 면 '예/아니오' 두 버튼, 아니면 '확인' 하나.
+ * @returns {Promise<boolean>} 확인/예를 누르면 true
+ */
+function xpModal(message, opts = {}) {
+  const overlay = $("xpModalOverlay");
+  $("xpModalTitle").textContent = opts.title || "이용약관에 동의하고 싶어";
+  $("xpModalIcon").textContent = opts.symbol || "!";
+  $("xpModalMsg").textContent = message;
+
+  const cancelBtn = $("xpModalCancel");
+  cancelBtn.hidden = !opts.confirm;
+  $("xpModalOk").textContent = opts.confirm ? "예" : "확인";
+
+  overlay.hidden = false;
+  $("xpModalOk").focus();
+  return new Promise((resolve) => {
+    modalResolve = resolve;
+  });
+}
+
+$("xpModalOk").addEventListener("click", () => closeXpModal(true));
+$("xpModalCancel").addEventListener("click", () => closeXpModal(false));
+$("xpModalX").addEventListener("click", () => closeXpModal(false));
+$("xpModalOverlay").addEventListener("mousedown", (e) => {
+  if (e.target === $("xpModalOverlay")) closeXpModal(false);
+});
+document.addEventListener("keydown", (e) => {
+  if ($("xpModalOverlay").hidden) return;
+  if (e.key === "Escape") closeXpModal(false);
+});
+
 /**
  * 상태 문구.
  *
@@ -39,6 +82,11 @@ const STATUS_TEXT = {
     label: "반려",
     cls: "rejected",
     msg: "등록되지 않았습니다.",
+  },
+  cancelled: {
+    label: "취소됨",
+    cls: "rejected",
+    msg: "제출을 취소하셨습니다. 같은 이름으로 다시 요청하실 수 있습니다.",
   },
 };
 
@@ -118,6 +166,15 @@ async function lookup(id) {
       msg = REVERT_REASON[r.revert_reason] || msg;
     }
     $("statusMsg").textContent = msg;
+
+    // 취소는 아직 검토 대기 중일 때만 가능합니다.
+    // (승인 후에는 data.js 가 이미 바뀌었으므로 관리자만 되돌릴 수 있습니다)
+    const canCancel = r.status === "pending";
+    $("cancelBox").hidden = !canCancel;
+    if (canCancel) {
+      $("cancelBox").dataset.id = String(r.id);
+      $("cancelToken").value = "";
+    }
 
     $("result").hidden = false;
   } catch {
@@ -247,3 +304,63 @@ if (initialId) {
   $("idInput").value = initialId;
   lookup(Number(initialId));
 }
+
+/* ─────────────────────────── 제출 취소 ─────────────────────────── */
+
+$("cancelBtn").addEventListener("click", async () => {
+  const id = Number($("cancelBox").dataset.id);
+  const token = $("cancelToken").value.trim();
+
+  if (!token) {
+    await xpModal(
+      "취소 코드를 입력해 주세요.\n\n제출이 완료된 화면에서 접수 번호와 함께 보여 드린 코드입니다.",
+      { title: "취소 코드 필요", symbol: "!" },
+    );
+    $("cancelToken").focus();
+    return;
+  }
+
+  // 되돌릴 수 없는 동작이라 한 번 더 확인받습니다.
+  const ok = await xpModal(
+    `접수 번호 #${id} 제출을 취소하시겠습니까?\n\n` +
+      `취소하면 검토 목록에서 빠지며 되돌릴 수 없습니다.\n` +
+      `같은 이름으로 다시 요청하실 수 있습니다.`,
+    { title: "제출 취소", symbol: "?", confirm: true },
+  );
+  if (!ok) return;
+
+  const btn = $("cancelBtn");
+  btn.disabled = true;
+  btn.textContent = "취소 중…";
+
+  try {
+    const res = await fetch(`${API_BASE}/api/submissions/${id}/cancel`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ token }),
+    });
+    const json = await res.json();
+
+    if (!json.ok) {
+      await xpModal(json.error || "취소하지 못했습니다.", {
+        title: "취소 실패",
+        symbol: "!",
+      });
+      return;
+    }
+
+    await xpModal(
+      `제출이 취소되었습니다.\n\n같은 이름으로 다시 요청하실 수 있습니다.`,
+      { title: "취소 완료", symbol: "i" },
+    );
+    lookup(id); // 상태를 다시 읽어 화면을 갱신합니다.
+  } catch {
+    await xpModal("서버에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.", {
+      title: "취소 실패",
+      symbol: "!",
+    });
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "제출 취소";
+  }
+});
