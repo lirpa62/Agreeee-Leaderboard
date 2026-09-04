@@ -507,6 +507,8 @@ const averageLinePlugin = {
     if (!averages.x || !averages.y) return;
     // 구버전 차트는 원래 모습 그대로 두기로 했습니다.
     if (document.body.dataset.ui !== "xp") return;
+    // 히스토그램의 y 는 '인원 수'라 평균선이 뜻을 갖지 않습니다.
+    if (chartLeague === "speedrun") return;
 
     const ctx = chart.ctx;
     const xAxis = chart.scales.x;
@@ -552,6 +554,36 @@ const averageLinePlugin = {
       ctx.textBaseline = "bottom";
       ctx.fillText(`평균 ${formatTime(averages.y, false)}`, xAxis.left + 4, py - 3);
     }
+    ctx.restore();
+  },
+};
+
+/**
+ * 히스토그램 막대 위에 인원 수를 적습니다.
+ *
+ * chartjs-plugin-datalabels 는 차트 type(scatter) 기준으로 위치를
+ * 잡아서 막대 꼭대기를 못 찾습니다. 직접 그리는 편이 확실합니다.
+ */
+const histogramLabelPlugin = {
+  id: "histogramLabelPlugin",
+  afterDatasetsDraw: (chart) => {
+    const meta = chart.getDatasetMeta(0);
+    const data = chart.data.datasets[0].data;
+    if (!data.length || !data[0]?.members) return;
+
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.font = "bold 10.3px 'Pretendard Variable', Pretendard, sans-serif";
+    ctx.fillStyle = "#333";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+
+    data.forEach((d, i) => {
+      if (!d.y) return; // 빈 구간은 적지 않습니다.
+      const bar = meta.data[i];
+      if (!bar) return;
+      ctx.fillText(String(d.y), bar.x, bar.y - 3);
+    });
     ctx.restore();
   },
 };
@@ -682,7 +714,7 @@ const myChart = new Chart(ctx, {
     ],
   },
   // 평균선을 먼저 그려 점 아래에 깔리게 합니다.
-  plugins: [averageLinePlugin, hoverAxisPlugin],
+  plugins: [averageLinePlugin, hoverAxisPlugin, histogramLabelPlugin],
   options: {
     responsive: true,
     maintainAspectRatio: false,
@@ -790,21 +822,34 @@ const myChart = new Chart(ctx, {
       legend: { display: false },
       tooltip: {
         callbacks: {
+          title: function (items) {
+            if (chartLeague !== "speedrun") return items[0]?.label;
+            const d = items[0]?.raw;
+            if (!d) return "";
+            return `${formatTime(d.binStart, false)} ~ ${formatTime(d.binEnd, false)}`;
+          },
           label: function (context) {
             const d = context.raw;
-            const icon = d.isShortcut ? "🎈" : "";
-            // 스피드런은 '총합'이 아니라 회차 시간 자체가 기록입니다.
+            // 스피드런은 구간별 분포라, 그 구간에 속한 사람을 보여 줍니다.
             if (chartLeague === "speedrun") {
-              return `${d.name} — ${formatTime(d.y, true)} (${d.x}위)`;
+              return `${d.members.length}명`;
             }
+            const icon = d.isShortcut ? "🎈" : "";
             return `${icon}${d.name} (총 ${formatTime(d.totalMin)})`;
           },
           afterLabel: function (context) {
             const d = context.raw;
-            // 스피드런 기록에는 약관 시간이 없습니다. (명예의 전당 기록과
-            // 병합되면서 tosTime 이 남아 있어도, 그 회차의 값이 아닙니다)
             if (chartLeague === "speedrun") {
-              return ` - 회차 시간: ${d.gameTime}`;
+              if (!d.members.length) return "";
+              // 순위 순으로, 너무 길어지지 않게 잘라 보여 줍니다.
+              const MAX = 12;
+              const lines = d.members
+                .slice(0, MAX)
+                .map((m) => ` ${m.rank}위 ${m.name} — ${m.gameTime}`);
+              if (d.members.length > MAX) {
+                lines.push(` … 외 ${d.members.length - MAX}명`);
+              }
+              return lines.join("\n");
             }
             // 툴팁 내용은 데이터 객체 그대로 사용 (x, y값과 무관하게 원본 텍스트 출력)
             return ` - 막트 전체: ${d.gameTime}\n - 약관: ${d.tosTime}`;
@@ -941,6 +986,10 @@ const myChart = new Chart(ctx, {
         // 113개 이름을 항상 띄우면 화면이 글자로 가득 차므로
         // 상위권 + 호버/검색 대상만 표시합니다. (LABEL_RANK_LIMIT)
         display: function (context) {
+          // 히스토그램의 인원 수는 histogramLabelPlugin 이 직접 그립니다.
+          // (차트 type 이 scatter 라 datalabels 가 막대 꼭대기를 못 잡습니다)
+          const d0 = context.dataset.data[context.dataIndex];
+          if (d0 && d0.members) return false;
           // 구버전은 기존처럼 모든 이름표를 표시
           if (!isXpUi()) return true;
           if (context.dataIndex === activePoint) return true;
@@ -1015,21 +1064,35 @@ function updateZoomHint() {
 function applyLeagueAxes() {
   const scales = myChart.options.scales;
   const speedrun = chartLeague === "speedrun";
+  const dataset = myChart.data.datasets[0];
+
+  // 스피드런은 분포(막대), 나머지는 산점도입니다.
+  dataset.type = speedrun ? "bar" : "scatter";
+  // 히스토그램은 막대가 구간 폭을 채우되 살짝 틈이 있어야 구간이 구분됩니다.
+  dataset.barPercentage = 0.92;
+  dataset.categoryPercentage = 1;
+  dataset.barThickness = undefined;
+  dataset.borderWidth = 1;
 
   scales.x.title.text = speedrun
-    ? "순위 (빠른 순)"
+    ? `클리어한 회차 시간 (${SPEEDRUN_BIN_MIN}분 구간)`
     : "이용약관과 마주한 시간";
   scales.x.ticks.callback = speedrun
-    ? // 순위는 1부터 시작하므로 0 눈금은 지웁니다.
-      (value) =>
-        Number.isInteger(value) && value >= 1 ? `${value}위` : ""
+    ? (value) => formatTime(value, false)
     : (value) => formatTime(value, false);
-  scales.x.ticks.stepSize = speedrun ? undefined : 60;
+  scales.x.ticks.stepSize = speedrun ? SPEEDRUN_BIN_MIN : 60;
+  // 막대가 축 양 끝에서 잘리지 않도록 여유를 둡니다.
+  scales.x.offset = speedrun;
 
-  // 스피드런 y 값은 스피드런 기록으로 교체된 회차 시간입니다.
   scales.y.title.text = speedrun
-    ? "클리어한 회차 시간"
+    ? "인원 수"
     : "클리어한 회차 플레이 시간(약관 + 본 게임)";
+  scales.y.ticks.stepSize = speedrun ? 5 : undefined;
+  // 산점도의 y 는 시간이므로 원래 포맷을 되돌려야 합니다.
+  scales.y.ticks.callback = speedrun
+    ? (value) => (Number.isInteger(value) ? `${value}명` : "")
+    : (value) => formatTime(value);
+  scales.y.beginAtZero = speedrun;
 }
 
 function applyXZoom() {
@@ -1040,7 +1103,7 @@ function applyXZoom() {
 
   applyLeagueAxes();
 
-  // 스피드런은 x 축이 순위라 '6시간까지' 같은 확대가 뜻이 없습니다.
+  // 히스토그램은 x 범위가 이미 구간에 맞춰져 있어 확대가 뜻이 없습니다.
   if (chartLeague === "speedrun") {
     controls.style.display = isXpUi() ? "" : "none";
     scales.x.min = undefined;
@@ -1286,6 +1349,68 @@ document.getElementById("xZoomBtn").addEventListener("click", function () {
   applyXZoom();
 });
 
+/** 스피드런 히스토그램 구간 폭(분). 2분이면 14개 안팎으로 나뉩니다. */
+const SPEEDRUN_BIN_MIN = 2;
+
+/**
+ * 스피드런 리그를 '구간별 인원' 막대로 만듭니다.
+ *
+ * 스피드런 기록에는 약관 시간이 없어 산점도로는 그릴 수 없습니다.
+ * 대신 회차 시간의 분포를 보여 주고, 각 막대에 속한 스트리머를
+ * 순위와 함께 담아 두어 마우스를 올리면 확인할 수 있게 합니다.
+ */
+function buildSpeedrunHistogram() {
+  // 스피드런 리그는 명예의 전당 회차 시간도 함께 줄을 세웁니다.
+  // (renderSpeedrun 의 병합과 같은 규칙)
+  const map = new Map();
+  for (const item of [...processedRecordData, ...processedRetryData]) {
+    map.set(item.name.replace("*", ""), item);
+  }
+  if (typeof SPEEDRUN_DATA !== "undefined") {
+    for (const raw of SPEEDRUN_DATA) {
+      const name = raw.name.replace("*", "");
+      const prev = map.get(name);
+      map.set(name, { ...(prev || {}), ...raw, name });
+    }
+  }
+
+  // 빠른 순으로 정렬해 순위를 매깁니다.
+  const ranked = [...map.values()]
+    .map((item) => ({ name: item.name, gameTime: item.gameTime, min: parseTime(item.gameTime) }))
+    .sort((a, b) => a.min - b.min)
+    .map((item, i) => ({ ...item, rank: i + 1 }));
+
+  // 구간별로 담습니다. 기록이 없는 중간 구간도 0 으로 채워야
+  // 막대 사이가 벌어지지 않고 분포가 제대로 보입니다.
+  const buckets = new Map();
+  for (const item of ranked) {
+    const start = Math.floor(item.min / SPEEDRUN_BIN_MIN) * SPEEDRUN_BIN_MIN;
+    if (!buckets.has(start)) buckets.set(start, []);
+    buckets.get(start).push(item);
+  }
+
+  const starts = [...buckets.keys()].sort((a, b) => a - b);
+  const first = starts[0] ?? 0;
+  const last = starts[starts.length - 1] ?? 0;
+
+  const rows = [];
+  for (let s = first; s <= last; s += SPEEDRUN_BIN_MIN) {
+    const members = buckets.get(s) || [];
+    rows.push({
+      // 막대 중앙에 놓아야 구간을 가리키는 위치가 맞습니다.
+      x: s + SPEEDRUN_BIN_MIN / 2,
+      y: members.length,
+      binStart: s,
+      binEnd: s + SPEEDRUN_BIN_MIN,
+      members,
+      // 산점도용 필드들이 없어도 되도록 최소한만 맞춰 둡니다.
+      name: `${s}~${s + SPEEDRUN_BIN_MIN}분`,
+      color: "#3a93ff",
+    });
+  }
+  return rows;
+}
+
 function getDisplayData() {
   if (chartLeague === "shortcut") {
     return assignLabelRank(
@@ -1294,43 +1419,7 @@ function getDisplayData() {
   }
 
   if (chartLeague === "speedrun") {
-    // 스피드런 리그는 명예의 전당 회차 시간도 함께 줄을 세웁니다.
-    // (renderSpeedrun 의 병합과 같은 규칙)
-    const map = new Map();
-    for (const item of [...processedRecordData, ...processedRetryData]) {
-      map.set(item.name.replace("*", ""), item);
-    }
-    if (typeof SPEEDRUN_DATA !== "undefined") {
-      for (const raw of SPEEDRUN_DATA) {
-        const name = raw.name.replace("*", "");
-        const prev = map.get(name);
-        const color =
-          STREAMER_COLORS[raw.name] ||
-          STREAMER_COLORS[name] ||
-          STREAMER_COLORS[`${name}*`] ||
-          prev?.color ||
-          DEFAULT_COLOR;
-        map.set(name, {
-          ...(prev || {}),
-          ...raw,
-          name,
-          color,
-          type: "speedrun",
-        });
-      }
-    }
-
-    // x = 순위, y = 회차 시간. 약관 시간이 없는 기록도 빠짐없이 그려집니다.
-    const rows = [...map.values()]
-      .map((item) => ({ ...item, gameMin: parseTime(item.gameTime) }))
-      .sort((a, b) => a.gameMin - b.gameMin)
-      .map((item, i) => ({
-        ...item,
-        x: i + 1,
-        y: item.gameMin,
-        totalMin: item.gameMin,
-      }));
-    return assignLabelRank(rows);
+    return buildSpeedrunHistogram();
   }
 
   // 명예의 전당 (+ 선택 시 풍선 숏컷)
@@ -1832,9 +1921,15 @@ document.getElementById("toggleAverage").addEventListener("change", (e) => {
 const chartShortcutBox = document.getElementById("toggleShortcutChart");
 const chartShortcutLabel = document.getElementById("chartShortcutToggleLabel");
 
-/** '풍선 숏컷 포함'은 명예의 전당 차트에서만 뜻이 있습니다. */
+/**
+ * 리그에 따라 쓸모없는 컨트롤을 감춥니다.
+ *  - '풍선 숏컷 포함'은 명예의 전당 차트에서만 뜻이 있습니다.
+ *  - 평균선은 히스토그램(스피드런)에서 뜻이 없습니다. y 가 인원 수입니다.
+ */
 function syncChartControls() {
   chartShortcutLabel.hidden = chartLeague !== "record";
+  const avgLabel = document.getElementById("toggleAverage")?.closest("label");
+  if (avgLabel) avgLabel.hidden = chartLeague === "speedrun";
 }
 
 /* XP 스타일 드롭다운 (네이티브 select 의 목록은 OS 가 그려서 못 꾸밉니다) */
@@ -1867,6 +1962,9 @@ function syncChartControls() {
     panView = null;
     activePoint = null;
     updateChart();
+    // Chart.js 는 scriptable 옵션 결과를 캐시합니다. 리그가 바뀌면
+    // 막대/점이 서로 다른 설정을 써야 하므로 캐시를 비웁니다.
+    myChart.update("resize");
   }
 
   btn.addEventListener("click", (e) => {
