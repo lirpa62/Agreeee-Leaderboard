@@ -987,11 +987,20 @@ body {
 
 .evidence-thumb {
   flex: 0 0 auto;
-  width: 96px;
-  height: 54px;
+  /* 16:9 비율 유지. 썸네일이 원본 1280x720 이라 선명합니다. */
+  width: 176px;
+  height: 99px;
   object-fit: cover;
   border: 1px solid #b9b4a4;
   background: #fff;
+}
+
+/* 좁은 화면에서는 썸네일이 자리를 너무 차지하지 않게 줄입니다. */
+@media (max-width: 520px) {
+  .evidence-thumb {
+    width: 120px;
+    height: 68px;
+  }
 }
 
 .evidence-info {
