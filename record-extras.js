@@ -76,6 +76,10 @@ function placeMenu(el, x, y) {
   const top = y > maxY ? Math.max(4, y - h) : Math.max(4, Math.min(y, maxY));
   el.style.left = `${left}px`;
   el.style.top = `${top}px`;
+
+  // 하위 메뉴가 오른쪽으로 펼쳐질 공간이 없으면 왼쪽으로 뒤집습니다.
+  const SUBMENU_W = 170;
+  el.classList.toggle("flip-sub", left + w + SUBMENU_W > window.innerWidth);
 }
 
 function openMenu(x, y, item) {
@@ -107,14 +111,49 @@ function openMenu(x, y, item) {
       `<div class="xp-menu-note">등록된 링크가 없는 기록입니다.</div>`
     : "";
 
+  // 스피드런은 갱신될 수 있어 이전 기록이 남습니다.
+  // XP 처럼 오른쪽 화살표가 붙은 하위 메뉴로 펼쳐 보여 줍니다.
+  const history = Array.isArray(item.previous) ? item.previous : [];
+  const submenu = history.length
+    ? `<div class="xp-menu-sep"></div>` +
+      `<div class="xp-menu-item has-sub" role="menuitem" aria-haspopup="true">` +
+      `<span class="xp-menu-icon">🕘</span>이전 기록 (${history.length})` +
+      `<span class="xp-menu-arrow">▶</span>` +
+      `<div class="xp-submenu">` +
+      history
+        .map(
+          (h) =>
+            `<div class="xp-submenu-row">` +
+            `<span class="xp-sub-time">${escapeHtml(h.gameTime)}</span>` +
+            (h.addedAt
+              ? `<span class="xp-sub-date">${escapeHtml(formatDate(h.addedAt))}</span>`
+              : "") +
+            `</div>`,
+        )
+        .join("") +
+      `</div></div>`
+    : "";
+
   el.innerHTML =
     `<div class="xp-menu-title">${escapeHtml(item.name)}</div>` +
     `<div class="xp-menu-sep"></div>` +
     rows +
+    submenu +
     footer;
 
   placeMenu(el, x, y);
   return true;
+}
+
+/** 이전 기록의 등록일을 짧게 표기합니다. */
+function formatDate(iso) {
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return "";
+  return new Date(t).toLocaleDateString("ko-KR", {
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  });
 }
 
 function escapeHtml(s) {
@@ -160,8 +199,14 @@ function initContextMenu() {
   ensureMenu();
 
   menuEl.addEventListener("click", (ev) => {
+    // 하위 메뉴 안(이전 기록 목록)은 읽기 전용이라 눌러도 닫지 않습니다.
+    if (ev.target.closest(".xp-submenu")) return;
+
     const btn = ev.target.closest(".xp-menu-item");
     if (!btn || btn.disabled) return;
+    // '이전 기록' 은 하위 메뉴를 여는 항목일 뿐입니다.
+    if (btn.classList.contains("has-sub")) return;
+
     const url = btn.dataset.url;
     closeMenu();
     if (url) window.open(url, "_blank", "noopener,noreferrer");

@@ -168,17 +168,27 @@ function stripLineComment(line) {
 }
 
 /** 색상표에 항목 추가 (이미 있으면 그대로 둡니다) */
-function addColor(src, name, color) {
+function addColor(src, name, color, { overwrite = false } = {}) {
   if (!color) return src;
   const startRe = /const\s+STREAMER_COLORS\s*=\s*\{/;
   const m = startRe.exec(src);
   if (!m) return src;
 
-  // 이미 등록된 이름이면 건드리지 않습니다.
+  // 이미 등록된 이름 처리.
+  // 기본은 건드리지 않고, overwrite 일 때만 값을 교체합니다.
   const existing = new RegExp(
-    `(^|\\n)\\s*(?:"${escapeRe(name)}"|${escapeRe(name)})\\s*:`,
+    `((?:^|\\n)\\s*)(?:"${escapeRe(name)}"|${escapeRe(name)})(\\s*:\\s*)(?:"[^"]*"|'[^']*')`,
   );
-  if (existing.test(src)) return src;
+  const found = existing.exec(src);
+  if (found) {
+    if (!overwrite) return src;
+    const key = /^[A-Za-z_$][\w$]*$/.test(name) ? name : JSON.stringify(name);
+    return (
+      src.slice(0, found.index) +
+      `${found[1]}${key}${found[2]}${JSON.stringify(color)}` +
+      src.slice(found.index + found[0].length)
+    );
+  }
 
   const insertAt = m.index + m[0].length;
   const key = /^[A-Za-z_$][\w$]*$/.test(name) ? name : JSON.stringify(name);
@@ -540,6 +550,54 @@ function updateRecordUrls(arrayName, index, urls, filePath = DATA_JS_PATH) {
 }
 
 /**
+ * 스트리머 색상을 추가하거나 변경합니다.
+ *
+ * STREAMER_COLORS 는 이름을 키로 쓰는 표라서, 같은 사람이 여러 리그에
+ * 있어도 색은 하나입니다. 리그 표기(*, 🎈)가 붙은 키도 함께 쓰이므로
+ * data.js 에 실제로 존재하는 키를 그대로 고칩니다.
+ *
+ * @param {string} name  data.js 의 색상표 키 (표기 접미사 포함)
+ * @param {string} color #RGB 또는 #RRGGBB
+ */
+function setStreamerColor(name, color, filePath = DATA_JS_PATH) {
+  const key = String(name || "").trim();
+  if (!key) throw new Error("이름이 비어 있습니다.");
+  if (!/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(String(color || ""))) {
+    throw new Error("색상 코드는 #RRGGBB 형식이어야 합니다. (예: #00FFA3)");
+  }
+
+  const before = readData(filePath);
+  const next = addColor(before.src, key, color, { overwrite: true });
+  if (next === before.src) {
+    throw new Error("색상표를 수정하지 못했습니다.");
+  }
+
+  // 쓰기 전에 검증합니다. 색상표만 바뀌어야 하고 기록은 그대로여야 합니다.
+  const ctx = { __out: null };
+  vm.createContext(ctx);
+  try {
+    vm.runInContext(
+      `${next};__out={${ARRAY_NAMES.join(",")},STREAMER_COLORS};`,
+      ctx,
+      { timeout: 5000 },
+    );
+  } catch (e) {
+    throw new Error(`생성된 data.js 가 올바르지 않습니다: ${e.message}`);
+  }
+  for (const arrayName of ARRAY_NAMES) {
+    if (ctx.__out[arrayName].length !== before[arrayName].length) {
+      throw new Error(`${arrayName} 개수가 달라졌습니다.`);
+    }
+  }
+  if (ctx.__out.STREAMER_COLORS[key] !== color) {
+    throw new Error("색상이 예상대로 반영되지 않았습니다.");
+  }
+
+  fs.writeFileSync(filePath, next, "utf8");
+  return { name: key, color, previous: before.STREAMER_COLORS?.[key] ?? null };
+}
+
+/**
  * 재도전이 함께 등록될 때, 기존 숏컷 기록의 이름에 '🎈' 를 붙입니다.
  *
  * 표기 규칙상 🎈는 '숏컷과 재도전 양쪽에 있는 사람' 을 구분하는 표시입니다.
@@ -767,4 +825,5 @@ module.exports = {
   updateRecordUrls,
   markShortcutBalloon,
   unmarkShortcutBalloon,
+  setStreamerColor,
 };

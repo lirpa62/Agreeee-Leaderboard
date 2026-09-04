@@ -466,11 +466,22 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
     const finalGameTime = gameCheck.value;
     const finalTosTime = sub.kind === "speedrun" ? null : tosCheck.value;
 
+    // 관리자가 색상도 고쳐 승인할 수 있습니다.
+    // (제출자가 안 넣었거나, 기존 색과 겹쳐 구분이 안 되는 경우)
+    const overrideColor = String(req.body?.color || "").trim();
+    if (overrideColor && !/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(overrideColor)) {
+      return res.status(400).json({
+        ok: false,
+        error: "색상 코드는 #RRGGBB 형식이어야 합니다. (예: #00FFA3)",
+      });
+    }
+    const finalColor = overrideColor || sub.color;
+
     const applied = dataFile.applySubmission({
       name: finalName,
       gameTime: finalGameTime,
       tosTime: finalTosTime,
-      color: sub.color,
+      color: finalColor,
       arrayName: dataFile.arrayNameFor(sub),
       // 리더보드의 'NEW' 배지와 우클릭 메뉴에서 씁니다.
       // 제출 시각이 아니라 승인 시각을 기준으로 해야
@@ -480,6 +491,16 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
       clipUrl: sub.clip_url,
       vodUrl: sub.vod_url,
     });
+
+    // 관리자가 색을 직접 지정했다면 기존 색도 덮어씁니다.
+    // (applySubmission 의 addColor 는 이미 있는 이름은 건드리지 않습니다)
+    if (overrideColor) {
+      try {
+        dataFile.setStreamerColor(finalName, overrideColor);
+      } catch (e) {
+        console.warn(`[승인] 색상 반영 실패: ${e.message}`);
+      }
+    }
 
     // 재도전을 승인하면, 같은 사람의 기존 숏컷 기록에 🎈를 붙입니다.
     //

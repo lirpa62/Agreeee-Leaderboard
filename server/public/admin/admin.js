@@ -126,6 +126,18 @@ function cardHtml(row) {
                }
              </div>
              <div class="approve-row">
+               <label class="approve-field color-field">
+                 <span>이름 색상</span>
+                 <span class="color-pick">
+                   <input type="color" class="reg-color-swatch"
+                          value="${esc(row.color || "#888888")}"
+                          title="색상 고르기" />
+                   <input class="xp-input reg-color" value="${esc(row.color || "")}"
+                          placeholder="#RRGGBB (비우면 기본색)" />
+                 </span>
+               </label>
+             </div>
+             <div class="approve-row">
                <label class="approve-field">
                  <span>클리어 회차</span>
                  <input class="xp-input reg-game" value="${esc(row.game_time)}"
@@ -341,6 +353,23 @@ document.getElementById("logoutBtn").addEventListener("click", async () => {
 });
 
 // 카드 액션
+// 색상 선택기와 텍스트 입력을 서로 맞춰 줍니다.
+// (선택기는 고르기 편하고, 텍스트는 정확한 값을 붙여 넣기 좋습니다)
+listEl.addEventListener("input", (e) => {
+  const card = e.target.closest(".card");
+  if (!card) return;
+
+  if (e.target.classList.contains("reg-color-swatch")) {
+    const text = card.querySelector(".reg-color");
+    if (text) text.value = e.target.value;
+  } else if (e.target.classList.contains("reg-color")) {
+    const swatch = card.querySelector(".reg-color-swatch");
+    const v = e.target.value.trim();
+    // 선택기는 #RRGGBB 만 받으므로 형식이 맞을 때만 반영합니다.
+    if (swatch && /^#[0-9a-f]{6}$/i.test(v)) swatch.value = v;
+  }
+});
+
 listEl.addEventListener("click", async (e) => {
   const btn = e.target.closest("button[data-act]");
   if (!btn) return;
@@ -359,6 +388,7 @@ listEl.addEventListener("click", async (e) => {
   const regGame = card.querySelector(".reg-game")?.value.trim() || "";
   const regTosEl = card.querySelector(".reg-tos");
   const regTos = regTosEl ? regTosEl.value.trim() : "";
+  const regColor = card.querySelector(".reg-color")?.value.trim() || "";
 
   if (act === "approve") {
     if (!regName) {
@@ -371,6 +401,11 @@ listEl.addEventListener("click", async (e) => {
     }
     if (regTosEl && !regTos) {
       flash(card, "err", "이용약관과 마주한 시간을 입력해 주세요.");
+      return;
+    }
+    // 색상은 선택 사항이지만, 넣었다면 형식이 맞아야 합니다.
+    if (regColor && !/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(regColor)) {
+      flash(card, "err", "색상 코드는 #RRGGBB 형식이어야 합니다. (예: #00FFA3)");
       return;
     }
 
@@ -437,6 +472,7 @@ listEl.addEventListener("click", async (e) => {
         name: regName || undefined,
         gameTime: regGame || undefined,
         tosTime: regTosEl ? regTos : undefined,
+        color: regColor || undefined,
         hasRetryToo,
       }),
     });

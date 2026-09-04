@@ -779,3 +779,25 @@ body.login-page .error {
   font-family: "Consolas", "Menlo", monospace;
   font-weight: normal;
 }
+
+/* 승인 시 이름 색상 지정 */
+.color-field .color-pick {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.color-pick input[type="color"] {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 24px;
+  padding: 1px;
+  border: 1px solid #8e8d78;
+  background: #fff;
+  cursor: pointer;
+}
+
+.color-pick .reg-color {
+  flex: 1 1 auto;
+  min-width: 0;
+}

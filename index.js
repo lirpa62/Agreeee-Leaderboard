@@ -1373,21 +1373,37 @@ function renderSpeedrun() {
     dataMap.set(cleanName, item);
   });
 
-  // 2. 스피드런 데이터가 있다면 덮어쓰기 (Override)
-  // SPEEDRUN_DATA에 있는 이름이라면, 기존 기록(gameTime)을 새 기록으로 교체
+  // 2. 스피드런 데이터로 덮어쓰기 (Override)
+  //
+  // 스피드런은 같은 사람이 여러 번 갱신할 수 있어 SPEEDRUN_DATA 에
+  // 같은 이름이 여러 개 있을 수 있습니다. 순위에는 '가장 빠른 기록'만
+  // 쓰고, 나머지는 previous 에 모아 우클릭 메뉴에서 보여 줍니다.
+  // (배열 순서가 곧 기록 순서는 아니므로 시간으로 비교합니다)
   if (typeof SPEEDRUN_DATA !== "undefined") {
+    const byName = new Map();
     SPEEDRUN_DATA.forEach((item) => {
       const cleanName = item.name.replace("*", "");
+      if (!byName.has(cleanName)) byName.set(cleanName, []);
+      byName.get(cleanName).push({ ...item, name: cleanName });
+    });
 
-      const speedrunItem = { ...item, name: cleanName };
+    byName.forEach((entries, cleanName) => {
+      // 빠른 순으로 정렬 → 첫 항목이 대표 기록, 나머지가 이전 기록
+      const sorted = entries
+        .slice()
+        .sort((a, b) => parseTime(a.gameTime) - parseTime(b.gameTime));
+      const best = sorted[0];
+      const previous = sorted.slice(1);
+
+      const merged = { ...best };
+      if (previous.length) merged.previous = previous;
 
       if (dataMap.has(cleanName)) {
-        // 이미 명예의 전당에 있는 경우: 기존 데이터(색상, tosTime 등)는 유지하되 gameTime만 스피드런 기록으로 교체
-        const original = dataMap.get(cleanName);
-        dataMap.set(cleanName, { ...original, ...speedrunItem });
+        // 이미 명예의 전당에 있는 경우: 기존 데이터(색상, tosTime 등)는
+        // 유지하되 gameTime 만 스피드런 기록으로 교체
+        dataMap.set(cleanName, { ...dataMap.get(cleanName), ...merged });
       } else {
-        // 명예의 전당에 없는 경우: 그냥 추가
-        dataMap.set(cleanName, speedrunItem);
+        dataMap.set(cleanName, merged);
       }
     });
   }
