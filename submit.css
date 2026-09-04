@@ -876,3 +876,76 @@ body {
 .xp-button.danger:hover {
   background: linear-gradient(180deg, #fff 0%, #ffe0e0 45%, #f5c0c0 100%);
 }
+
+/* ---------------------------------------------------------
+   스트리머 이름 자동 추천
+   --------------------------------------------------------- */
+.suggest-wrap {
+  position: relative;
+}
+
+.suggest-list {
+  position: absolute;
+  z-index: 50;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin: 2px 0 0;
+  padding: 2px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #7f9db9;
+  box-shadow: 2px 3px 7px rgba(0, 0, 0, 0.25);
+  max-height: 232px;
+  overflow-y: auto;
+}
+
+.suggest-list[hidden] {
+  display: none;
+}
+
+.suggest-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+
+/* 마우스 hover 와 키보드 선택을 같은 모양으로 */
+.suggest-item:hover,
+.suggest-item.active {
+  background: #316ac5;
+  color: #fff;
+}
+
+/* 리더보드에서 쓰는 색을 그대로 보여 줍니다. */
+.suggest-dot {
+  flex: 0 0 auto;
+  width: 11px;
+  height: 11px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  border-radius: 2px;
+}
+
+.suggest-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: bold;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.suggest-tags {
+  flex: 0 0 auto;
+  font-size: 0.7rem;
+  color: #777;
+  white-space: nowrap;
+}
+
+.suggest-item:hover .suggest-tags,
+.suggest-item.active .suggest-tags {
+  color: #dbe6f7;
+}

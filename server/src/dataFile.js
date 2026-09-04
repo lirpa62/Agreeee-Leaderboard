@@ -550,6 +550,44 @@ function updateRecordUrls(arrayName, index, urls, filePath = DATA_JS_PATH) {
 }
 
 /**
+ * 이미 등록된 스트리머 목록 (이름·채널 주소·색상).
+ *
+ * 기록 등록 요청 화면의 자동 추천에 씁니다. 이미 리더보드에 공개된
+ * 정보만 담기므로 따로 가릴 것은 없습니다.
+ *
+ * 같은 사람이 여러 리그에 있으므로 표기 접미사(*, 🎈)를 뗀 이름으로
+ * 묶고, 채널 주소는 가장 최근에 등록된 값을 씁니다.
+ */
+function listStreamers(filePath = DATA_JS_PATH) {
+  const data = readData(filePath);
+  const map = new Map();
+
+  for (const arrayName of ARRAY_NAMES) {
+    for (const item of data[arrayName]) {
+      const name = baseName(item.name);
+      if (!name) continue;
+      const prev = map.get(name) || { name, channelUrl: "", leagues: [] };
+      // 나중에 등록된 항목의 주소로 갱신합니다. (채널을 옮겼을 수 있음)
+      if (item.channelUrl) prev.channelUrl = item.channelUrl;
+      if (!prev.leagues.includes(arrayName)) prev.leagues.push(arrayName);
+      map.set(name, prev);
+    }
+  }
+
+  // 색상표 키에는 접미사가 붙어 있을 수 있어 순서대로 찾아봅니다.
+  const colors = data.STREAMER_COLORS || {};
+  for (const entry of map.values()) {
+    entry.color =
+      colors[entry.name] ||
+      colors[`${entry.name}*`] ||
+      colors[`${entry.name}🎈`] ||
+      "";
+  }
+
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, "ko"));
+}
+
+/**
  * 이 스트리머가 스피드런 순위에 올려 둔 현재 최고 기록을 찾습니다.
  *
  * 스피드런 리그는 SPEEDRUN_DATA 뿐 아니라 명예의 전당의 클리어 회차
@@ -881,4 +919,5 @@ module.exports = {
   setStreamerColor,
   bestSpeedrun,
   parseTimeToMinutes,
+  listStreamers,
 };

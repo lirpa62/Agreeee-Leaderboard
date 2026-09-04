@@ -180,6 +180,156 @@ $("color").addEventListener("input", (e) => {
   if (/^#[0-9a-f]{6}$/i.test(v)) $("colorPicker").value = v;
 });
 
+/* ---------------------------------------------------------
+   스트리머 이름 자동 추천
+   이미 등록된 스트리머면 채널 주소·색상까지 함께 채워 줍니다.
+   (재등록·갱신이 잦은데 매번 채널 주소를 찾아 붙이는 건 번거롭습니다)
+   --------------------------------------------------------- */
+const LEAGUE_TAG = {
+  RECORD_DATA: "명예의 전당",
+  RETRY_DATA: "재도전",
+  SHORTCUT_DATA: "풍선 숏컷",
+  SPEEDRUN_DATA: "스피드런",
+};
+
+let suggestRows = [];
+let suggestIndex = -1;
+let suggestTimer = null;
+// 응답이 순서 없이 도착할 수 있어 마지막 요청만 반영합니다.
+let suggestSeq = 0;
+
+function closeSuggest() {
+  $("nameSuggest").hidden = true;
+  $("streamerName").setAttribute("aria-expanded", "false");
+  suggestIndex = -1;
+}
+
+function renderSuggest() {
+  const list = $("nameSuggest");
+  if (!suggestRows.length) {
+    closeSuggest();
+    return;
+  }
+
+  list.innerHTML = "";
+  suggestRows.forEach((row, i) => {
+    const li = document.createElement("li");
+    li.className = "suggest-item" + (i === suggestIndex ? " active" : "");
+    li.setAttribute("role", "option");
+    li.setAttribute("aria-selected", i === suggestIndex ? "true" : "false");
+    li.dataset.index = String(i);
+
+    const dot = document.createElement("span");
+    dot.className = "suggest-dot";
+    dot.style.background = row.color || "#888";
+
+    const name = document.createElement("span");
+    name.className = "suggest-name";
+    name.textContent = row.name;
+
+    const tags = document.createElement("span");
+    tags.className = "suggest-tags";
+    tags.textContent = (row.leagues || [])
+      .map((l) => LEAGUE_TAG[l] || l)
+      .join(" · ");
+
+    li.append(dot, name, tags);
+    list.appendChild(li);
+  });
+
+  list.hidden = false;
+  $("streamerName").setAttribute("aria-expanded", "true");
+}
+
+/** 고른 스트리머의 값으로 폼을 채웁니다. */
+function applySuggestion(row) {
+  $("streamerName").value = row.name;
+  if (row.channelUrl) $("channelUrl").value = row.channelUrl;
+  if (row.color) {
+    $("color").value = row.color.toUpperCase();
+    if (/^#[0-9a-f]{6}$/i.test(row.color)) $("colorPicker").value = row.color;
+  }
+  closeSuggest();
+
+  // 무엇이 채워졌는지 알려 주어야 사용자가 확인할 수 있습니다.
+  const filled = [row.channelUrl && "채널 주소", row.color && "이름 색상"]
+    .filter(Boolean)
+    .join(", ");
+  const out = $("channelResult");
+  if (filled) {
+    // 받침에 따라 조사를 고릅니다. ('채널 주소를' / '이름 색상을')
+    const last = filled.charCodeAt(filled.length - 1);
+    const hasJong = last >= 0xac00 && last <= 0xd7a3 && (last - 0xac00) % 28 > 0;
+    out.textContent =
+      `✅ ${row.name} — ${filled}${hasJong ? "을" : "를"} 채웠습니다. ` +
+      `확인해 주세요.`;
+    out.className = "channel-result ok";
+  }
+}
+
+async function fetchSuggest(q) {
+  const seq = ++suggestSeq;
+  try {
+    const res = await fetch(
+      `${API_BASE}/api/streamers?q=${encodeURIComponent(q)}`,
+    );
+    const json = await res.json();
+    if (seq !== suggestSeq) return; // 더 최근 입력이 있으면 버립니다.
+    suggestRows = json.ok ? json.rows : [];
+    suggestIndex = -1;
+    renderSuggest();
+  } catch {
+    // 추천은 편의 기능이라, 실패해도 직접 입력하면 됩니다.
+    suggestRows = [];
+    closeSuggest();
+  }
+}
+
+$("streamerName").addEventListener("input", () => {
+  const q = $("streamerName").value.trim();
+  clearTimeout(suggestTimer);
+  if (q.length < 1) {
+    suggestRows = [];
+    closeSuggest();
+    return;
+  }
+  // 타자마다 요청하지 않도록 잠시 기다립니다.
+  suggestTimer = setTimeout(() => fetchSuggest(q), 180);
+});
+
+$("streamerName").addEventListener("keydown", (e) => {
+  if ($("nameSuggest").hidden || !suggestRows.length) return;
+
+  if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+    e.preventDefault();
+    const dir = e.key === "ArrowDown" ? 1 : -1;
+    suggestIndex =
+      (suggestIndex + dir + suggestRows.length) % suggestRows.length;
+    renderSuggest();
+  } else if (e.key === "Enter") {
+    // 목록에서 고르는 중이면 제출로 넘어가지 않게 막습니다.
+    if (suggestIndex >= 0) {
+      e.preventDefault();
+      applySuggestion(suggestRows[suggestIndex]);
+    }
+  } else if (e.key === "Escape") {
+    closeSuggest();
+  }
+});
+
+$("nameSuggest").addEventListener("mousedown", (e) => {
+  // blur 보다 먼저 처리해야 클릭이 목록에 닿습니다.
+  const li = e.target.closest(".suggest-item");
+  if (!li) return;
+  e.preventDefault();
+  applySuggestion(suggestRows[Number(li.dataset.index)]);
+});
+
+$("streamerName").addEventListener("blur", () => {
+  // 클릭 처리(mousedown)가 끝난 뒤 닫습니다.
+  setTimeout(closeSuggest, 120);
+});
+
 /* 채널 확인 (제출 전 미리보기) */
 $("checkChannelBtn").addEventListener("click", async () => {
   const out = $("channelResult");

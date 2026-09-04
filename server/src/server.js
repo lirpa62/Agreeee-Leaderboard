@@ -156,6 +156,50 @@ app.get("/api/config", (req, res) => {
   });
 });
 
+/**
+ * 이미 등록된 스트리머 목록 (기록 등록 요청 화면의 자동 추천용)
+ *
+ * 이름을 입력하면 그에 맞는 후보를 돌려주고, 고르면 채널 주소와
+ * 색상까지 채워집니다. 이미 리더보드에 공개된 정보만 담깁니다.
+ *
+ * data.js 를 매 요청마다 파싱하면 낭비이므로 짧게 캐시합니다.
+ * (발행으로 파일이 바뀌어도 1분 안에 반영됩니다)
+ */
+let streamerCache = { at: 0, rows: [] };
+const STREAMER_CACHE_MS = 60_000;
+
+app.get(
+  "/api/streamers",
+  rateLimit({ windowMs: 60_000, max: 120 }),
+  (req, res) => {
+    try {
+      const now = Date.now();
+      if (now - streamerCache.at > STREAMER_CACHE_MS) {
+        streamerCache = { at: now, rows: dataFile.listStreamers() };
+      }
+
+      const q = String(req.query.q || "").trim().toLowerCase();
+      let rows = streamerCache.rows;
+      if (q) {
+        // 앞에서부터 일치하는 것을 먼저 보여 줍니다.
+        const starts = [];
+        const contains = [];
+        for (const r of rows) {
+          const lower = r.name.toLowerCase();
+          if (lower.startsWith(q)) starts.push(r);
+          else if (lower.includes(q)) contains.push(r);
+        }
+        rows = [...starts, ...contains];
+      }
+
+      res.setHeader("Cache-Control", "public, max-age=60");
+      res.json({ ok: true, rows: rows.slice(0, 8) });
+    } catch (e) {
+      res.status(500).json({ ok: false, error: e.message });
+    }
+  },
+);
+
 /** 제출 상태 조회 (접수 번호로) */
 app.get(
   "/api/submissions/:id/status",

@@ -67,13 +67,27 @@
 
             <div class="field">
               <label for="streamerName">스트리머 이름 <b>*</b></label>
-              <input
-                type="text"
-                id="streamerName"
-                class="xp-input"
-                maxlength="50"
-                required
-              />
+              <!-- 이미 등록된 스트리머면 자동 추천이 뜹니다.
+                   고르면 채널 주소와 색상까지 함께 채워집니다. -->
+              <div class="suggest-wrap">
+                <input
+                  type="text"
+                  id="streamerName"
+                  class="xp-input"
+                  maxlength="50"
+                  autocomplete="off"
+                  role="combobox"
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                  aria-controls="nameSuggest"
+                  required
+                />
+                <ul class="suggest-list" id="nameSuggest" role="listbox" hidden></ul>
+              </div>
+              <p class="hint">
+                이미 등록된 스트리머라면 이름을 입력할 때 나오는 목록에서
+                고르시면 채널 주소와 색상이 함께 채워집니다.
+              </p>
             </div>
 
             <div class="field">
