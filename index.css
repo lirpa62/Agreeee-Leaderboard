@@ -1049,8 +1049,10 @@ h2 {
   font-size: 0.78rem;
   color: #555;
   white-space: nowrap;
-  /* 리그 선택은 차트 오른쪽 끝에 붙입니다. */
+  /* 리그 선택은 차트 오른쪽 끝에 붙입니다.
+     테두리에 딱 붙지 않도록 약간의 여백을 둡니다. */
   margin-left: auto;
+  padding-right: 4px;
 }
 
 /* 커스텀 드롭다운 (네이티브 select 는 펼침 목록을 꾸밀 수 없습니다) */
