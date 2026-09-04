@@ -486,6 +486,11 @@ let chartFocusTimeout = null;
  */
 let chartLeague = "record";
 
+/** 지금 리그가 히스토그램(막대)인가? */
+function isHistogram() {
+  return chartLeague === "speedrun" || chartLeague === "record-hist";
+}
+
 let showAverage = true;
 let averages = { x: 0, y: 0 };
 
@@ -508,7 +513,7 @@ const averageLinePlugin = {
     // 구버전 차트는 원래 모습 그대로 두기로 했습니다.
     if (document.body.dataset.ui !== "xp") return;
     // 히스토그램의 y 는 '인원 수'라 평균선이 뜻을 갖지 않습니다.
-    if (chartLeague === "speedrun") return;
+    if (isHistogram()) return;
 
     const ctx = chart.ctx;
     const xAxis = chart.scales.x;
@@ -823,15 +828,15 @@ const myChart = new Chart(ctx, {
       tooltip: {
         callbacks: {
           title: function (items) {
-            if (chartLeague !== "speedrun") return items[0]?.label;
+            if (!isHistogram()) return items[0]?.label;
             const d = items[0]?.raw;
             if (!d) return "";
             return `${formatTime(d.binStart, false)} ~ ${formatTime(d.binEnd, false)}`;
           },
           label: function (context) {
             const d = context.raw;
-            // 스피드런은 구간별 분포라, 그 구간에 속한 사람을 보여 줍니다.
-            if (chartLeague === "speedrun") {
+            // 히스토그램은 구간별 분포라, 그 구간에 속한 사람을 보여 줍니다.
+            if (isHistogram()) {
               return `${d.members.length}명`;
             }
             const icon = d.isShortcut ? "🎈" : "";
@@ -839,17 +844,21 @@ const myChart = new Chart(ctx, {
           },
           afterLabel: function (context) {
             const d = context.raw;
-            if (chartLeague === "speedrun") {
+            if (isHistogram()) {
               if (!d.members.length) return "";
-              // 순위 순으로, 너무 길어지지 않게 잘라 보여 줍니다.
-              const MAX = 12;
-              const lines = d.members
-                .slice(0, MAX)
-                .map((m) => ` ${m.rank}위 ${m.name} — ${m.gameTime}`);
-              if (d.members.length > MAX) {
-                lines.push(` … 외 ${d.members.length - MAX}명`);
-              }
-              return lines.join("\n");
+              // 구간이 촘촘해 한 구간의 인원이 많지 않으므로
+              // 자르지 않고 전원을 순위 순으로 보여 줍니다.
+              return d.members
+                .map((m) => {
+                  // 명예의 전당은 총합으로 줄을 세웁니다.
+                  // 회차 시간을 적으면 구간과 어긋나 보입니다.
+                  const time =
+                    chartLeague === "record-hist"
+                      ? formatTime(m.min, false)
+                      : m.gameTime;
+                  return ` ${m.rank}위 ${m.name} — ${time}`;
+                })
+                .join("\n");
             }
             // 툴팁 내용은 데이터 객체 그대로 사용 (x, y값과 무관하게 원본 텍스트 출력)
             return ` - 막트 전체: ${d.gameTime}\n - 약관: ${d.tosTime}`;
@@ -1063,7 +1072,7 @@ function updateZoomHint() {
  */
 function applyLeagueAxes() {
   const scales = myChart.options.scales;
-  const speedrun = chartLeague === "speedrun";
+  const speedrun = isHistogram();
   const dataset = myChart.data.datasets[0];
 
   // 스피드런은 분포(막대), 나머지는 산점도입니다.
@@ -1074,13 +1083,20 @@ function applyLeagueAxes() {
   dataset.barThickness = undefined;
   dataset.borderWidth = 1;
 
-  scales.x.title.text = speedrun
-    ? `클리어한 회차 시간 (${SPEEDRUN_BIN_MIN}분 구간)`
-    : "이용약관과 마주한 시간";
-  scales.x.ticks.callback = speedrun
-    ? (value) => formatTime(value, false)
-    : (value) => formatTime(value, false);
-  scales.x.ticks.stepSize = speedrun ? SPEEDRUN_BIN_MIN : 60;
+  const binWidth =
+    chartLeague === "speedrun" ? SPEEDRUN_BIN_MIN : RECORD_BIN_MIN;
+
+  scales.x.title.text =
+    chartLeague === "speedrun"
+      ? `클리어한 회차 시간 (${SPEEDRUN_BIN_MIN}분 구간)`
+      : chartLeague === "record-hist"
+        ? "총합 시간 (약관 + 회차, 1시간 구간)"
+        : "이용약관과 마주한 시간";
+  scales.x.ticks.callback = (value) => formatTime(value, false);
+  // 구간이 촘촘하면 눈금이 너무 빽빽해지므로 몇 칸씩 건너뜁니다.
+  scales.x.ticks.stepSize = speedrun
+    ? binWidth * (chartLeague === "speedrun" ? 2 : 1)
+    : 60;
   // 막대가 축 양 끝에서 잘리지 않도록 여유를 둡니다.
   scales.x.offset = speedrun;
 
@@ -1088,6 +1104,8 @@ function applyLeagueAxes() {
     ? "인원 수"
     : "클리어한 회차 플레이 시간(약관 + 본 게임)";
   scales.y.ticks.stepSize = speedrun ? 5 : undefined;
+  // 막대 위 인원 수 라벨이 위에서 잘리지 않도록 여유를 둡니다.
+  scales.y.grace = speedrun ? "8%" : undefined;
   // 산점도의 y 는 시간이므로 원래 포맷을 되돌려야 합니다.
   scales.y.ticks.callback = speedrun
     ? (value) => (Number.isInteger(value) ? `${value}명` : "")
@@ -1104,7 +1122,7 @@ function applyXZoom() {
   applyLeagueAxes();
 
   // 히스토그램은 x 범위가 이미 구간에 맞춰져 있어 확대가 뜻이 없습니다.
-  if (chartLeague === "speedrun") {
+  if (isHistogram()) {
     controls.style.display = isXpUi() ? "" : "none";
     scales.x.min = undefined;
     scales.x.max = undefined;
@@ -1349,8 +1367,21 @@ document.getElementById("xZoomBtn").addEventListener("click", function () {
   applyXZoom();
 });
 
-/** 스피드런 히스토그램 구간 폭(분). 2분이면 14개 안팎으로 나뉩니다. */
-const SPEEDRUN_BIN_MIN = 2;
+/**
+ * 스피드런 히스토그램 구간 폭(분).
+ *
+ * 2분이면 한 구간에 최대 25명까지 몰려 툴팁이 화면을 넘칩니다.
+ * 1분으로 줄이면 최대 14명이라 전원을 그대로 보여 줄 수 있습니다.
+ */
+const SPEEDRUN_BIN_MIN = 1;
+
+/**
+ * 명예의 전당 히스토그램 구간 폭(분).
+ *
+ * 총합은 48분 ~ 18시간으로 범위가 넓어 1시간 구간이 적당합니다.
+ * (3~5시간에 39명이 몰린 봉우리가 뚜렷하게 보입니다)
+ */
+const RECORD_BIN_MIN = 60;
 
 /**
  * 스피드런 리그를 '구간별 인원' 막대로 만듭니다.
@@ -1389,26 +1420,83 @@ function buildSpeedrunHistogram() {
     buckets.get(start).push(item);
   }
 
+  return toHistogramRows(buckets, SPEEDRUN_BIN_MIN, "#3a93ff");
+}
+
+/**
+ * 명예의 전당을 '총합 시간 구간별 인원' 막대로 만듭니다.
+ *
+ * 산점도로는 3~5시간 구간의 밀집이 점 겹침에 가려 잘 보이지 않습니다.
+ * 히스토그램에서는 봉우리와 긴 꼬리(최대 18시간)가 뚜렷합니다.
+ */
+function buildRecordHistogram() {
+  const includeShortcut = document.getElementById("toggleShortcut").checked;
+  const source = includeShortcut
+    ? [...processedRecordData, ...processedRetryData, ...processedShortcutData]
+    : [...processedRecordData, ...processedRetryData];
+
+  const ranked = source
+    .map((item) => ({
+      name: item.name,
+      gameTime: item.gameTime,
+      tosTime: item.tosTime,
+      min: item.totalMin,
+    }))
+    .sort((a, b) => a.min - b.min)
+    .map((item, i) => ({ ...item, rank: i + 1 }));
+
+  const buckets = new Map();
+  for (const item of ranked) {
+    const start = Math.floor(item.min / RECORD_BIN_MIN) * RECORD_BIN_MIN;
+    if (!buckets.has(start)) buckets.set(start, []);
+    buckets.get(start).push(item);
+  }
+  return toHistogramRows(buckets, RECORD_BIN_MIN, "#3d8b37");
+}
+
+/**
+ * 구간별 목록을 막대 데이터로 바꿉니다.
+ *
+ * 기록이 없는 중간 구간도 0 으로 채웁니다. 빼면 막대 사이가 벌어져
+ * 분포가 왜곡돼 보입니다.
+ */
+function toHistogramRows(buckets, binWidth, color) {
   const starts = [...buckets.keys()].sort((a, b) => a - b);
   const first = starts[0] ?? 0;
   const last = starts[starts.length - 1] ?? 0;
 
   const rows = [];
-  for (let s = first; s <= last; s += SPEEDRUN_BIN_MIN) {
+  for (let s = first; s <= last; s += binWidth) {
     const members = buckets.get(s) || [];
     rows.push({
       // 막대 중앙에 놓아야 구간을 가리키는 위치가 맞습니다.
-      x: s + SPEEDRUN_BIN_MIN / 2,
+      x: s + binWidth / 2,
       y: members.length,
       binStart: s,
-      binEnd: s + SPEEDRUN_BIN_MIN,
+      binEnd: s + binWidth,
       members,
       // 산점도용 필드들이 없어도 되도록 최소한만 맞춰 둡니다.
-      name: `${s}~${s + SPEEDRUN_BIN_MIN}분`,
-      color: "#3a93ff",
+      name: `${s}~${s + binWidth}분`,
+      color,
     });
   }
   return rows;
+}
+
+/**
+ * 오른쪽 '명예의 전당' 목록에 쓸 데이터.
+ *
+ * 차트는 리그에 따라 히스토그램이 되기도 하지만, 목록은 언제나
+ * 명예의 전당입니다. getDisplayData 를 그대로 쓰면 목록에 구간 정보가
+ * 들어가 버립니다.
+ */
+function getRankListData() {
+  const isShortcutChecked = document.getElementById("toggleShortcut").checked;
+  let finalData = [...processedRecordData, ...processedRetryData];
+  if (isShortcutChecked) {
+    finalData = [...finalData, ...processedShortcutData];
+  }
+  return assignLabelRank(finalData.sort((a, b) => a.totalMin - b.totalMin));
 }
 
 function getDisplayData() {
@@ -1420,6 +1508,10 @@ function getDisplayData() {
 
   if (chartLeague === "speedrun") {
     return buildSpeedrunHistogram();
+  }
+
+  if (chartLeague === "record-hist") {
+    return buildRecordHistogram();
   }
 
   // 명예의 전당 (+ 선택 시 풍선 숏컷)
@@ -1446,7 +1538,7 @@ function renderRanking() {
   const listContainer = document.getElementById("rankList");
   listContainer.innerHTML = "";
 
-  const displayData = getDisplayData();
+  const displayData = getRankListData();
 
   let rankCounter = 0;
 
@@ -1487,6 +1579,10 @@ function renderRanking() {
 
     // 리스트 클릭 시 차트 포커스
     li.onclick = () => {
+      // 차트가 명예의 전당 산점도일 때만 순서가 일치합니다.
+      // (히스토그램·다른 리그에서는 index 가 엉뚱한 막대를 가리킵니다)
+      if (chartLeague !== "record") return;
+
       // 1. 기존에 예약된 포커스 해제 타이머가 있다면 취소
       if (chartFocusTimeout) {
         clearTimeout(chartFocusTimeout);
@@ -1927,9 +2023,10 @@ const chartShortcutLabel = document.getElementById("chartShortcutToggleLabel");
  *  - 평균선은 히스토그램(스피드런)에서 뜻이 없습니다. y 가 인원 수입니다.
  */
 function syncChartControls() {
-  chartShortcutLabel.hidden = chartLeague !== "record";
+  chartShortcutLabel.hidden =
+    chartLeague !== "record" && chartLeague !== "record-hist";
   const avgLabel = document.getElementById("toggleAverage")?.closest("label");
-  if (avgLabel) avgLabel.hidden = chartLeague === "speedrun";
+  if (avgLabel) avgLabel.hidden = isHistogram();
 }
 
 /* XP 스타일 드롭다운 (네이티브 select 의 목록은 OS 가 그려서 못 꾸밉니다) */
