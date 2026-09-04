@@ -1462,17 +1462,37 @@ body[data-ui="xp"] .chart-toggle {
   color: var(--xp-text);
 }
 
-body[data-ui="xp"] .chart-select {
+body[data-ui="xp"] .xp-select-btn {
   font-family: var(--xp-font);
   font-size: 11px;
-  padding: 1px 3px;
+  padding: 2px 5px;
   border: 1px solid var(--xp-shadow);
   border-radius: 2px;
-  background: linear-gradient(180deg, #fff 0%, #f5f4ea 100%);
+  background: linear-gradient(180deg, #fff 0%, #f5f4ea 55%, #e8e6da 100%);
   box-shadow: inset 1px 1px 0 #fff;
 }
 
-body[data-ui="xp"] .chart-select:focus {
+body[data-ui="xp"] .xp-select-btn:hover {
+  background: linear-gradient(180deg, #fff 0%, #fdfcf5 55%, #efeee2 100%);
+}
+
+body[data-ui="xp"] .xp-select-btn:focus {
   outline: 1px dotted var(--xp-text);
   outline-offset: 1px;
+}
+
+body[data-ui="xp"] .xp-select-list {
+  font-family: var(--xp-font);
+  border: 1px solid var(--xp-shadow);
+  box-shadow:
+    inset 1px 1px 0 #fff,
+    2px 2px 4px rgba(0, 0, 0, 0.35);
+}
+
+body[data-ui="xp"] .xp-select-list li {
+  font-size: 11px;
+}
+
+body[data-ui="xp"] .xp-select-list li:hover {
+  background: var(--xp-highlight);
 }

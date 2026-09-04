@@ -1051,17 +1051,81 @@ h2 {
   white-space: nowrap;
 }
 
-.chart-select {
+/* 커스텀 드롭다운 (네이티브 select 는 펼침 목록을 꾸밀 수 없습니다) */
+.xp-select {
+  position: relative;
+  display: inline-block;
+}
+
+.xp-select-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 116px;
+  padding: 2px 5px;
   font: inherit;
   font-size: 0.78rem;
-  padding: 2px 4px;
   border: 1px solid #7f9db9;
   background: #fff;
   color: #000;
   cursor: pointer;
+  text-align: left;
 }
 
+.xp-select-value {
+  flex: 1 1 auto;
+  white-space: nowrap;
+}
+
+.xp-select-arrow {
+  flex: 0 0 auto;
+  font-size: 0.6rem;
+  line-height: 1;
+  color: #444;
+}
+
+.xp-select-list {
+  position: absolute;
+  z-index: 60;
+  top: 100%;
+  left: 0;
+  min-width: 100%;
+  margin: 1px 0 0;
+  padding: 1px;
+  list-style: none;
+  background: #fff;
+  border: 1px solid #7f9db9;
+  box-shadow: 2px 3px 7px rgba(0, 0, 0, 0.25);
+}
+
+.xp-select-list[hidden] {
+  display: none;
+}
+
+.xp-select-list li {
+  padding: 4px 9px;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.xp-select-list li:hover {
+  background: #316ac5;
+  color: #fff;
+}
+
+/* 현재 고른 항목은 XP 처럼 옅게 표시해 둡니다. */
+.xp-select-list li.selected {
+  background: #d8e4f8;
+}
+
+.xp-select-list li.selected:hover {
+  background: #316ac5;
+}
+
+/* display 를 지정한 규칙들보다 확실히 이기도록 !important 를 씁니다.
+   (같은 특이도면 뒤에 오는 규칙이 이기는데, 이 규칙이 앞설 수 있습니다) */
 .chart-toggle[hidden],
 .chart-select-label[hidden] {
-  display: none;
+  display: none !important;
 }

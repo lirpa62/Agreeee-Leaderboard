@@ -162,14 +162,32 @@
             </button>
             <span id="xZoomHint" class="chart-hint"></span>
             <!-- 리그별 차트 전환 (신버전 전용) -->
-            <label class="chart-select-label xp-only" for="chartLeague">
+            <span class="chart-select-label xp-only">
               리그
-              <select id="chartLeague" class="chart-select">
-                <option value="record">🏆 명예의 전당</option>
-                <option value="shortcut">🎈 풍선 숏컷</option>
-                <option value="speedrun">⚡ 스피드런</option>
-              </select>
-            </label>
+              <!-- 네이티브 select 의 펼침 목록은 OS 가 그려서 XP 스타일을
+                   입힐 수 없습니다. 그래서 직접 만든 드롭다운을 씁니다. -->
+              <span class="xp-select" id="chartLeague">
+                <button
+                  type="button"
+                  class="xp-select-btn"
+                  id="chartLeagueBtn"
+                  aria-haspopup="listbox"
+                  aria-expanded="false"
+                >
+                  <span class="xp-select-value" id="chartLeagueValue"
+                    >🏆 명예의 전당</span
+                  >
+                  <span class="xp-select-arrow">▼</span>
+                </button>
+                <ul class="xp-select-list" id="chartLeagueList" role="listbox" hidden>
+                  <li role="option" data-value="record" class="selected">
+                    🏆 명예의 전당
+                  </li>
+                  <li role="option" data-value="shortcut">🎈 풍선 숏컷</li>
+                  <li role="option" data-value="speedrun">⚡ 스피드런</li>
+                </ul>
+              </span>
+            </span>
             <!-- 평균선은 신버전 차트에만 있습니다. (구버전 차트는 그대로) -->
             <label class="chart-toggle xp-only" title="X·Y축 평균 위치를 점선으로 표시합니다">
               <input type="checkbox" id="toggleAverage" checked />

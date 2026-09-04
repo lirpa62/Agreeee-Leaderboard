@@ -801,6 +801,11 @@ const myChart = new Chart(ctx, {
           },
           afterLabel: function (context) {
             const d = context.raw;
+            // 스피드런 기록에는 약관 시간이 없습니다. (명예의 전당 기록과
+            // 병합되면서 tosTime 이 남아 있어도, 그 회차의 값이 아닙니다)
+            if (chartLeague === "speedrun") {
+              return ` - 회차 시간: ${d.gameTime}`;
+            }
             // 툴팁 내용은 데이터 객체 그대로 사용 (x, y값과 무관하게 원본 텍스트 출력)
             return ` - 막트 전체: ${d.gameTime}\n - 약관: ${d.tosTime}`;
           },
@@ -1824,7 +1829,6 @@ document.getElementById("toggleAverage").addEventListener("change", (e) => {
 /* ---------------------------------------------------------
    리그별 차트 전환
    --------------------------------------------------------- */
-const chartLeagueSelect = document.getElementById("chartLeague");
 const chartShortcutBox = document.getElementById("toggleShortcutChart");
 const chartShortcutLabel = document.getElementById("chartShortcutToggleLabel");
 
@@ -1833,15 +1837,69 @@ function syncChartControls() {
   chartShortcutLabel.hidden = chartLeague !== "record";
 }
 
-chartLeagueSelect.addEventListener("change", (e) => {
-  chartLeague = e.target.value;
-  syncChartControls();
-  // 리그가 바뀌면 확대·이동 상태를 초기화합니다.
-  // (축의 의미가 달라져 이전 범위를 유지하면 엉뚱한 곳을 봅니다)
-  panView = null;
-  activePoint = null;
-  updateChart();
-});
+/* XP 스타일 드롭다운 (네이티브 select 의 목록은 OS 가 그려서 못 꾸밉니다) */
+(function initLeagueSelect() {
+  const btn = document.getElementById("chartLeagueBtn");
+  const list = document.getElementById("chartLeagueList");
+  const valueEl = document.getElementById("chartLeagueValue");
+  const items = [...list.querySelectorAll("li")];
+
+  function close() {
+    list.hidden = true;
+    btn.setAttribute("aria-expanded", "false");
+  }
+  function open() {
+    list.hidden = false;
+    btn.setAttribute("aria-expanded", "true");
+  }
+
+  function choose(li) {
+    const value = li.dataset.value;
+    close();
+    if (value === chartLeague) return;
+
+    chartLeague = value;
+    valueEl.textContent = li.textContent.trim();
+    items.forEach((x) => x.classList.toggle("selected", x === li));
+    syncChartControls();
+    // 리그가 바뀌면 확대·이동 상태를 초기화합니다.
+    // (축의 의미가 달라져 이전 범위를 유지하면 엉뚱한 곳을 봅니다)
+    panView = null;
+    activePoint = null;
+    updateChart();
+  }
+
+  btn.addEventListener("click", (e) => {
+    e.stopPropagation();
+    if (list.hidden) open();
+    else close();
+  });
+
+  list.addEventListener("click", (e) => {
+    const li = e.target.closest("li");
+    if (li) choose(li);
+  });
+
+  // 키보드로도 고를 수 있게 합니다.
+  btn.addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      open();
+      const cur = items.findIndex((x) => x.classList.contains("selected"));
+      const next = items[e.key === "ArrowDown" ? Math.min(cur + 1, items.length - 1) : cur];
+      if (next) next.focus?.();
+    }
+  });
+  list.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      close();
+      btn.focus();
+    }
+  });
+
+  document.addEventListener("click", () => close());
+  window.addEventListener("blur", close);
+})();
 
 // 차트 옆 토글과 숏컷 섹션의 토글은 같은 값을 공유합니다.
 // 둘 중 어느 쪽을 눌러도 같게 동작해야 헷갈리지 않습니다.
