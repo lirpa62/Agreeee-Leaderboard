@@ -1201,6 +1201,9 @@ function applyXZoom() {
    */
   function canPan() {
     if (!isXpUi() || !isXZoomed) return false;
+    // 히스토그램은 x 범위가 구간에 맞춰져 있어 옮길 곳이 없습니다.
+    // (isXZoomed 는 이전 리그의 값이 남아 있을 수 있어 따로 막습니다)
+    if (isHistogram()) return false;
     // 차트가 가로 스크롤 상태면(= 모바일 레이아웃) 패닝 대신 스크롤
     const scroller = canvas.closest(".chart-scroll");
     if (scroller && scroller.scrollWidth > scroller.clientWidth) return false;
