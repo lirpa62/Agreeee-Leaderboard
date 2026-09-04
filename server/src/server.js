@@ -108,7 +108,10 @@ app.use(skipDeploy(express.urlencoded({ extended: false, limit: "32kb" })));
  */
 const ALLOWED_ORIGINS = String(
   process.env.ALLOWED_ORIGINS ||
-    "https://agreeee-leaderboard.netlify.app,http://localhost:8765",
+    // 후속작 리더보드도 같은 서버를 씁니다. (game=nowloading)
+    "https://agreeee-leaderboard.netlify.app," +
+      "https://nowloading-leaderboard.netlify.app," +
+      "http://localhost:8765",
 )
   .split(",")
   .map((s) => s.trim())
