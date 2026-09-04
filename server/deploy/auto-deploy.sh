@@ -96,17 +96,29 @@ if err=$(sudo -n systemd-run --unit="agreeee-redeploy-$$" --collect \
 fi
 log "systemd-run 실패: ${err:-(메시지 없음)}"
 
-# systemd-run 이 없거나 권한이 없으면 setsid 로라도 떼어 냅니다.
-if command -v setsid >/dev/null 2>&1 &&
-   err=$(setsid --fork sudo -n /bin/systemctl restart "$SERVICE" 2>&1); then
-  log "재시작을 백그라운드로 넘겼습니다 ✅"
-  exit 0
+# systemd-run 이 없거나 권한이 없을 때의 대안.
+#
+# ⚠ setsid --fork 는 자식을 띄운 순간 바로 성공을 반환합니다.
+#   뒤이어 sudo 가 실패해도 그 결과를 알 수 없어, 예전에는 실패를
+#   '재시작을 넘겼습니다 ✅' 로 잘못 보고했습니다.
+#   그래서 먼저 sudo 권한이 실제로 있는지 확인하고 넘깁니다.
+if sudo -n true 2>/dev/null; then
+  if command -v setsid >/dev/null 2>&1; then
+    setsid --fork sudo -n /bin/systemctl restart "$SERVICE"
+    log "재시작을 백그라운드로 넘겼습니다 ✅"
+    exit 0
+  fi
+  log "setsid 가 없습니다."
+else
+  log "sudo 를 쓸 수 없습니다: $(sudo -n true 2>&1 | head -1)"
 fi
-log "setsid 실패: ${err:-(메시지 없음)}"
 
-log "재시작에 실패했습니다 ❌"
+log "재시작에 실패했습니다 ❌ — 새 코드는 받았지만 아직 적용되지 않았습니다."
 log "확인할 것:"
-log "  1) sudoers — $(whoami) ALL=(root) NOPASSWD: /usr/bin/systemd-run, /bin/systemctl restart $SERVICE"
-log "  2) 유닛의 NoNewPrivileges=true 가 켜져 있으면 sudo 자체가 막힙니다."
-log "     (sudo: a password is required / must be setuid root 메시지가 그 증상입니다)"
+log "  1) 유닛에 NoNewPrivileges=true 가 켜져 있으면 sudo 가 아예 막힙니다."
+log "     ('no new privileges' 메시지가 그 증상입니다)"
+log "     저장소의 유닛 파일을 시스템에 복사해야 반영됩니다:"
+log "       sudo cp $REPO_DIR/server/deploy/agreeee-server.service /etc/systemd/system/"
+log "       sudo systemctl daemon-reload && sudo systemctl restart $SERVICE"
+log "  2) sudoers — $(whoami) ALL=(root) NOPASSWD: /usr/bin/systemd-run, /bin/systemctl restart $SERVICE"
 exit 1
