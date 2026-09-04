@@ -1451,3 +1451,28 @@ body[data-ui="xp"] .xp-menu-item.has-sub:hover {
   background: var(--xp-highlight);
   color: #fff;
 }
+
+/* ---------------------------------------------------------
+   차트 컨트롤 — Luna 마감
+   --------------------------------------------------------- */
+body[data-ui="xp"] .chart-select-label,
+body[data-ui="xp"] .chart-toggle {
+  font-family: var(--xp-font);
+  font-size: 11px;
+  color: var(--xp-text);
+}
+
+body[data-ui="xp"] .chart-select {
+  font-family: var(--xp-font);
+  font-size: 11px;
+  padding: 1px 3px;
+  border: 1px solid var(--xp-shadow);
+  border-radius: 2px;
+  background: linear-gradient(180deg, #fff 0%, #f5f4ea 100%);
+  box-shadow: inset 1px 1px 0 #fff;
+}
+
+body[data-ui="xp"] .chart-select:focus {
+  outline: 1px dotted var(--xp-text);
+  outline-offset: 1px;
+}

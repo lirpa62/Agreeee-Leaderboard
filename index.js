@@ -474,6 +474,18 @@ let chartFocusTimeout = null;
    평균/중앙값이 X축 1.16배, Y축 1.06배로 치우침이 크지 않아
    평균을 그대로 씁니다.
    --------------------------------------------------------- */
+/**
+ * 차트에 그릴 리그. 'record' | 'shortcut' | 'speedrun'
+ *
+ * ⚠ 스피드런 기록에는 약관 시간(tosTime)이 없습니다. (19건 전부)
+ *   그래서 같은 산점도에 올리면 전부 x=0 에 붙어 버립니다.
+ *   스피드런은 '순위 × 회차 시간' 으로 축을 바꿔 그립니다.
+ *
+ * ⚠ initialChartData 가 getDisplayData 보다 먼저 평가되므로
+ *   선언도 그보다 위에 있어야 합니다. (TDZ 오류 방지)
+ */
+let chartLeague = "record";
+
 let showAverage = true;
 let averages = { x: 0, y: 0 };
 
@@ -509,7 +521,9 @@ const averageLinePlugin = {
     ctx.strokeStyle = "rgba(120, 120, 120, 0.75)";
 
     // 확대·이동으로 평균이 화면 밖이면 선을 그리지 않습니다.
-    const xVisible = px >= xAxis.left && px <= xAxis.right;
+    // 스피드런의 x 는 순위라서 '순위의 평균'은 뜻이 없으므로 뺍니다.
+    const xVisible =
+      chartLeague !== "speedrun" && px >= xAxis.left && px <= xAxis.right;
     const yVisible = py >= yAxis.top && py <= yAxis.bottom;
 
     ctx.beginPath();
@@ -698,6 +712,8 @@ const myChart = new Chart(ctx, {
     onClick: (e, elements) => {
       // 드래그로 화면을 옮긴 직후의 클릭은 무시
       if (window.chartJustPanned) return;
+      // 오른쪽 목록은 명예의 전당이므로, 다른 리그에서는 순서가 맞지 않습니다.
+      if (chartLeague !== "record") return;
       if (elements.length > 0) {
         const index = elements[0].index;
         const listContainer = document.getElementById("rankList");
@@ -777,6 +793,10 @@ const myChart = new Chart(ctx, {
           label: function (context) {
             const d = context.raw;
             const icon = d.isShortcut ? "🎈" : "";
+            // 스피드런은 '총합'이 아니라 회차 시간 자체가 기록입니다.
+            if (chartLeague === "speedrun") {
+              return `${d.name} — ${formatTime(d.y, true)} (${d.x}위)`;
+            }
             return `${icon}${d.name} (총 ${formatTime(d.totalMin)})`;
           },
           afterLabel: function (context) {
@@ -981,11 +1001,53 @@ function updateZoomHint() {
   hint.textContent = hidden > 0 ? `화면 밖 ${hidden}명 · ${how}` : how;
 }
 
+/**
+ * 리그에 맞게 축 제목·눈금 표기를 바꿉니다.
+ *
+ * 스피드런은 x 가 시간이 아니라 순위라서, 시간 포맷을 그대로 쓰면
+ * '1분, 2분…' 처럼 잘못 읽힙니다.
+ */
+function applyLeagueAxes() {
+  const scales = myChart.options.scales;
+  const speedrun = chartLeague === "speedrun";
+
+  scales.x.title.text = speedrun
+    ? "순위 (빠른 순)"
+    : "이용약관과 마주한 시간";
+  scales.x.ticks.callback = speedrun
+    ? // 순위는 1부터 시작하므로 0 눈금은 지웁니다.
+      (value) =>
+        Number.isInteger(value) && value >= 1 ? `${value}위` : ""
+    : (value) => formatTime(value, false);
+  scales.x.ticks.stepSize = speedrun ? undefined : 60;
+
+  // 스피드런 y 값은 스피드런 기록으로 교체된 회차 시간입니다.
+  scales.y.title.text = speedrun
+    ? "클리어한 회차 시간"
+    : "클리어한 회차 플레이 시간(약관 + 본 게임)";
+}
+
 function applyXZoom() {
   const btn = document.getElementById("xZoomBtn");
   const hint = document.getElementById("xZoomHint");
   const controls = document.querySelector(".chart-controls");
   const scales = myChart.options.scales;
+
+  applyLeagueAxes();
+
+  // 스피드런은 x 축이 순위라 '6시간까지' 같은 확대가 뜻이 없습니다.
+  if (chartLeague === "speedrun") {
+    controls.style.display = isXpUi() ? "" : "none";
+    scales.x.min = undefined;
+    scales.x.max = undefined;
+    scales.y.min = undefined;
+    scales.y.max = undefined;
+    myChart.update();
+    btn.hidden = true;
+    hint.textContent = "";
+    return;
+  }
+  btn.hidden = false;
 
   // 구버전: 기존 차트 그대로 (축 제한/드래그 없음)
   if (!isXpUi()) {
@@ -1220,6 +1282,53 @@ document.getElementById("xZoomBtn").addEventListener("click", function () {
 });
 
 function getDisplayData() {
+  if (chartLeague === "shortcut") {
+    return assignLabelRank(
+      [...processedShortcutData].sort((a, b) => a.totalMin - b.totalMin),
+    );
+  }
+
+  if (chartLeague === "speedrun") {
+    // 스피드런 리그는 명예의 전당 회차 시간도 함께 줄을 세웁니다.
+    // (renderSpeedrun 의 병합과 같은 규칙)
+    const map = new Map();
+    for (const item of [...processedRecordData, ...processedRetryData]) {
+      map.set(item.name.replace("*", ""), item);
+    }
+    if (typeof SPEEDRUN_DATA !== "undefined") {
+      for (const raw of SPEEDRUN_DATA) {
+        const name = raw.name.replace("*", "");
+        const prev = map.get(name);
+        const color =
+          STREAMER_COLORS[raw.name] ||
+          STREAMER_COLORS[name] ||
+          STREAMER_COLORS[`${name}*`] ||
+          prev?.color ||
+          DEFAULT_COLOR;
+        map.set(name, {
+          ...(prev || {}),
+          ...raw,
+          name,
+          color,
+          type: "speedrun",
+        });
+      }
+    }
+
+    // x = 순위, y = 회차 시간. 약관 시간이 없는 기록도 빠짐없이 그려집니다.
+    const rows = [...map.values()]
+      .map((item) => ({ ...item, gameMin: parseTime(item.gameTime) }))
+      .sort((a, b) => a.gameMin - b.gameMin)
+      .map((item, i) => ({
+        ...item,
+        x: i + 1,
+        y: item.gameMin,
+        totalMin: item.gameMin,
+      }));
+    return assignLabelRank(rows);
+  }
+
+  // 명예의 전당 (+ 선택 시 풍선 숏컷)
   const isShortcutChecked = document.getElementById("toggleShortcut").checked;
 
   let finalData = [...processedRecordData, ...processedRetryData]; // 기본 데이터 + 재시도 데이터
@@ -1699,13 +1808,49 @@ window.addEventListener("scroll", checkScroll);
 // 초기 로딩 시 위치 확인 (이미 스크롤된 상태로 로드될 경우 대비)
 checkScroll();
 
-document.getElementById("toggleShortcut").addEventListener("change", updateAll);
+document.getElementById("toggleShortcut").addEventListener("change", (e) => {
+  // 차트 옆 토글도 같은 값으로 맞춥니다.
+  const box = document.getElementById("toggleShortcutChart");
+  if (box) box.checked = e.target.checked;
+  updateAll();
+});
 
 // 평균선 표시 토글 (차트가 빽빽해 거슬릴 수 있어 끌 수 있게 둡니다)
 document.getElementById("toggleAverage").addEventListener("change", (e) => {
   showAverage = e.target.checked;
   myChart.update();
 });
+
+/* ---------------------------------------------------------
+   리그별 차트 전환
+   --------------------------------------------------------- */
+const chartLeagueSelect = document.getElementById("chartLeague");
+const chartShortcutBox = document.getElementById("toggleShortcutChart");
+const chartShortcutLabel = document.getElementById("chartShortcutToggleLabel");
+
+/** '풍선 숏컷 포함'은 명예의 전당 차트에서만 뜻이 있습니다. */
+function syncChartControls() {
+  chartShortcutLabel.hidden = chartLeague !== "record";
+}
+
+chartLeagueSelect.addEventListener("change", (e) => {
+  chartLeague = e.target.value;
+  syncChartControls();
+  // 리그가 바뀌면 확대·이동 상태를 초기화합니다.
+  // (축의 의미가 달라져 이전 범위를 유지하면 엉뚱한 곳을 봅니다)
+  panView = null;
+  activePoint = null;
+  updateChart();
+});
+
+// 차트 옆 토글과 숏컷 섹션의 토글은 같은 값을 공유합니다.
+// 둘 중 어느 쪽을 눌러도 같게 동작해야 헷갈리지 않습니다.
+chartShortcutBox.addEventListener("change", (e) => {
+  document.getElementById("toggleShortcut").checked = e.target.checked;
+  updateAll();
+});
+
+syncChartControls();
 
 // UI 버전을 바꾸면 평균선 표시 여부도 달라지므로 다시 그립니다.
 document.getElementById("uiVersionToggle").addEventListener("click", () => {
