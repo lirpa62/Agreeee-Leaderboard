@@ -587,8 +587,67 @@ const histogramLabelPlugin = {
       if (!d.y) return; // 빈 구간은 적지 않습니다.
       const bar = meta.data[i];
       if (!bar) return;
+
+      // 인원 수
+      ctx.fillStyle = "#333";
+      ctx.font = "bold 10.3px 'Pretendard Variable', Pretendard, sans-serif";
       ctx.fillText(String(d.y), bar.x, bar.y - 3);
+
+      // 그 아래 누적 비율. '여기까지 상위 몇 %' 를 바로 읽습니다.
+      // 막대가 좁으면 겹치므로 일정 폭 이상일 때만 적습니다.
+      const width = bar.width ?? 0;
+      if (width >= 22) {
+        ctx.fillStyle = "#8a8a8a";
+        ctx.font = "9px 'Pretendard Variable', Pretendard, sans-serif";
+        ctx.fillText(`${Math.round(d.cumulativePct)}%`, bar.x, bar.y - 14);
+      }
     });
+    ctx.restore();
+  },
+};
+
+/**
+ * 히스토그램의 중앙값 세로선.
+ *
+ * '절반은 이보다 빠르다'를 한 줄로 보여 줍니다.
+ * 정규분포 곡선보다 이 리더보드에서 훨씬 실용적입니다.
+ */
+const medianLinePlugin = {
+  id: "medianLinePlugin",
+  beforeDatasetsDraw: (chart) => {
+    const data = chart.data.datasets[0].data;
+    if (!data.length || !data[0]?.members) return;
+
+    const median = histogramMedian(data);
+    if (median == null) return;
+
+    const xAxis = chart.scales.x;
+    const yAxis = chart.scales.y;
+    const px = xAxis.getPixelForValue(median);
+    if (px < xAxis.left || px > xAxis.right) return;
+
+    const ctx = chart.ctx;
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = "rgba(193, 39, 45, 0.8)";
+    ctx.beginPath();
+    ctx.moveTo(px, yAxis.top);
+    ctx.lineTo(px, yAxis.bottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.font = "bold 10px 'Pretendard Variable', Pretendard, sans-serif";
+    ctx.fillStyle = "#c1272d";
+    ctx.textBaseline = "top";
+    // 오른쪽 끝에 가까우면 라벨을 왼쪽으로 붙입니다.
+    const nearRight = px > xAxis.right - 90;
+    ctx.textAlign = nearRight ? "right" : "left";
+    ctx.fillText(
+      `중앙값 ${formatTime(median, false)}`,
+      px + (nearRight ? -4 : 4),
+      yAxis.top + 3,
+    );
     ctx.restore();
   },
 };
@@ -719,7 +778,12 @@ const myChart = new Chart(ctx, {
     ],
   },
   // 평균선을 먼저 그려 점 아래에 깔리게 합니다.
-  plugins: [averageLinePlugin, hoverAxisPlugin, histogramLabelPlugin],
+  plugins: [
+    averageLinePlugin,
+    medianLinePlugin,
+    hoverAxisPlugin,
+    histogramLabelPlugin,
+  ],
   options: {
     responsive: true,
     maintainAspectRatio: false,
@@ -837,7 +901,11 @@ const myChart = new Chart(ctx, {
             const d = context.raw;
             // 히스토그램은 구간별 분포라, 그 구간에 속한 사람을 보여 줍니다.
             if (isHistogram()) {
-              return `${d.members.length}명`;
+              if (!d.y) return "0명";
+              return (
+                `${d.y}명 · 여기까지 ${d.cumulative}/${d.total}명 ` +
+                `(상위 ${Math.round(d.cumulativePct)}%)`
+              );
             }
             const icon = d.isShortcut ? "🎈" : "";
             return `${icon}${d.name} (총 ${formatTime(d.totalMin)})`;
@@ -1468,9 +1536,13 @@ function toHistogramRows(buckets, binWidth, color) {
   const first = starts[0] ?? 0;
   const last = starts[starts.length - 1] ?? 0;
 
+  const total = [...buckets.values()].reduce((a, m) => a + m.length, 0);
+
   const rows = [];
+  let cumulative = 0;
   for (let s = first; s <= last; s += binWidth) {
     const members = buckets.get(s) || [];
+    cumulative += members.length;
     rows.push({
       // 막대 중앙에 놓아야 구간을 가리키는 위치가 맞습니다.
       x: s + binWidth / 2,
@@ -1478,12 +1550,34 @@ function toHistogramRows(buckets, binWidth, color) {
       binStart: s,
       binEnd: s + binWidth,
       members,
+      // 이 구간까지 포함한 누적 인원과 비율.
+      // '여기까지 상위 몇 %' 를 바로 읽을 수 있습니다.
+      cumulative,
+      cumulativePct: total ? (cumulative / total) * 100 : 0,
+      total,
       // 산점도용 필드들이 없어도 되도록 최소한만 맞춰 둡니다.
       name: `${s}~${s + binWidth}분`,
       color,
     });
   }
   return rows;
+}
+
+/**
+ * 히스토그램 데이터에서 중앙값을 구합니다.
+ *
+ * 구간이 아니라 원래 값들로 계산해야 정확합니다.
+ * (구간 중앙을 대표값으로 쓰면 최대 구간 폭의 절반만큼 어긋납니다)
+ */
+function histogramMedian(rows) {
+  const values = [];
+  for (const row of rows) {
+    for (const m of row.members) values.push(m.min);
+  }
+  if (!values.length) return null;
+  values.sort((a, b) => a - b);
+  const n = values.length;
+  return n % 2 ? values[(n - 1) / 2] : (values[n / 2 - 1] + values[n / 2]) / 2;
 }
 
 /**
