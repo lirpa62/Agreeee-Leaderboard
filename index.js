@@ -2234,3 +2234,45 @@ startBadgeExpiry(() => {
 
 // 리스트 생성 후 스크롤 상태 재확인 (DOM 높이 변경 반영)
 setTimeout(checkScroll, 100);
+
+/* ---------------------------------------------------------
+   후속작 예고 창
+   '끝나지않는NowLoading' 의 소재대로 로딩이 끝나지 않습니다.
+   99% 에 가까울수록 느려지고 절대 100% 가 되지 않습니다.
+   --------------------------------------------------------- */
+(function initSequelPreview() {
+  const bar = document.getElementById("sequelBar");
+  const status = document.getElementById("sequelStatus");
+  if (!bar || !status) return;
+
+  const FILES = [
+    "world_00.pak",
+    "chr_hero.dat",
+    "bgm_field.ogg",
+    "shader_cache.bin",
+    "verifying…",
+    "almost_there.tmp",
+  ];
+
+  let progress = 0;
+  let fileIndex = 0;
+
+  function tick() {
+    // 탭이 안 보이면 굳이 돌리지 않습니다.
+    if (!document.hidden) {
+      const remaining = 99 - progress;
+      progress = Math.min(
+        99,
+        progress + Math.max(0.1, remaining * (0.02 + Math.random() * 0.05)),
+      );
+      if (Math.random() < 0.35) {
+        fileIndex = (fileIndex + 1) % FILES.length;
+      }
+      bar.style.width = `${progress}%`;
+      status.textContent = `${progress.toFixed(0)}% · ${FILES[fileIndex]}`;
+    }
+    setTimeout(tick, 700 + Math.random() * 1100);
+  }
+
+  tick();
+})();

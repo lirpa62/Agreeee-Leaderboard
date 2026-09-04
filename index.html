@@ -98,15 +98,37 @@
         </p>
 
         <!-- 신버전: XP 정보 상자 + 약관 스크롤 박스 연출 -->
-        <div class="xp-infobox xp-only">
-          <span class="xp-info-icon">i</span>
-          <p class="notice" style="text-align: left; margin: 0">
-            점에 마우스를 올리면 기록을 확인할 수 있습니다!<br />
-            (<strong
-              >10,000 팔로우 이상, 클래식 모드, 첫번째 클리어만 등록됩니다 /
-              풍선 숏컷은 제외</strong
-            >)
-          </p>
+        <div class="xp-info-row xp-only">
+          <div class="xp-infobox">
+            <span class="xp-info-icon">i</span>
+            <p class="notice" style="text-align: left; margin: 0">
+              점에 마우스를 올리면 기록을 확인할 수 있습니다!<br />
+              (<strong
+                >10,000 팔로우 이상, 클래식 모드, 첫번째 클리어만 등록됩니다 /
+                풍선 숏컷은 제외</strong
+              >)
+            </p>
+          </div>
+
+          <!-- 후속작 예고. 그 게임의 '로딩이 끝나지 않는' 소재를 그대로
+               작은 창으로 보여 줍니다. 누르면 후속작 리더보드로 갑니다. -->
+          <a
+            class="sequel-window"
+            href="https://nowloading-leaderboard.netlify.app"
+            title="끝나지않는NowLoading 리더보드로 이동"
+          >
+            <span class="sequel-titlebar">
+              <span class="sequel-titlebar-icon">⏳</span>
+              <span class="sequel-titlebar-text">끝나지않는NowLoading</span>
+            </span>
+            <span class="sequel-body">
+              <span class="sequel-label">후속작 리더보드</span>
+              <span class="sequel-progress">
+                <span class="sequel-bar" id="sequelBar"></span>
+              </span>
+              <span class="sequel-status" id="sequelStatus">로딩 중… 0%</span>
+            </span>
+          </a>
         </div>
 
         <div class="xp-group xp-only">

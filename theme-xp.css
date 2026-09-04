@@ -1508,3 +1508,130 @@ body[data-ui="xp"] .xp-select-list li {
 body[data-ui="xp"] .xp-select-list li:hover {
   background: var(--xp-highlight);
 }
+
+/* ---------------------------------------------------------
+   후속작 예고 창 (인포박스 오른쪽)
+   후속작은 Windows 95/98 테마라, 이 작은 창도 그 시대 모습으로
+   그려 대비를 줍니다. XP 화면 안에 옛 창이 하나 떠 있는 셈입니다.
+   --------------------------------------------------------- */
+body[data-ui="xp"] .xp-info-row {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+body[data-ui="xp"] .xp-info-row .xp-infobox {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+body[data-ui="xp"] .sequel-window {
+  flex: 0 0 auto;
+  width: 210px;
+  display: block;
+  text-decoration: none;
+  color: #000;
+  /* 95 의 각진 베벨 */
+  background: #c0c0c0;
+  border: 2px solid;
+  border-color: #fff #000 #000 #fff;
+  box-shadow:
+    inset 1px 1px 0 #dfdfdf,
+    inset -1px -1px 0 #808080;
+  padding: 2px;
+  font-family: "Gulim", "굴림", "MS Sans Serif", Tahoma, sans-serif;
+  cursor: pointer;
+}
+
+body[data-ui="xp"] .sequel-window:hover {
+  /* 링크임을 알 수 있게 살짝 밝아집니다. */
+  background: #cdcdcd;
+}
+
+body[data-ui="xp"] .sequel-window:active {
+  border-color: #000 #fff #fff #000;
+  box-shadow:
+    inset 1px 1px 0 #808080,
+    inset -1px -1px 0 #dfdfdf;
+}
+
+body[data-ui="xp"] .sequel-titlebar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 17px;
+  padding: 0 3px;
+  background: linear-gradient(90deg, #000080 0%, #1084d0 100%);
+  color: #fff;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+body[data-ui="xp"] .sequel-titlebar-icon {
+  flex: 0 0 auto;
+  line-height: 1;
+}
+
+body[data-ui="xp"] .sequel-titlebar-text {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-ui="xp"] .sequel-body {
+  display: block;
+  padding: 7px 8px 8px;
+}
+
+body[data-ui="xp"] .sequel-label {
+  display: block;
+  font-size: 11px;
+  margin-bottom: 5px;
+}
+
+/* 95 의 블록형 진행 막대 */
+body[data-ui="xp"] .sequel-progress {
+  display: block;
+  height: 14px;
+  padding: 2px;
+  background: #fff;
+  border: 1px solid;
+  border-color: #808080 #fff #fff #808080;
+  overflow: hidden;
+}
+
+body[data-ui="xp"] .sequel-bar {
+  display: block;
+  height: 100%;
+  width: 0;
+  background-image: linear-gradient(
+    90deg,
+    #000080 0 7px,
+    transparent 7px 9px
+  );
+  background-size: 9px 100%;
+  transition: width 0.3s steps(3);
+}
+
+body[data-ui="xp"] .sequel-status {
+  display: block;
+  margin-top: 4px;
+  font-size: 10px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 좁은 화면에서는 아래로 내려 보냅니다. */
+@media (max-width: 900px) {
+  body[data-ui="xp"] .xp-info-row {
+    flex-direction: column;
+  }
+  body[data-ui="xp"] .sequel-window {
+    width: 100%;
+  }
+}
