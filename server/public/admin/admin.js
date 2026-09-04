@@ -170,6 +170,20 @@ function cardHtml(row) {
   </div>`;
 }
 
+/**
+ * 숏컷 기록의 🎈 변경 결과를 문장으로 만듭니다.
+ *
+ * 이름이 조용히 바뀌면 나중에 이유를 알기 어려우므로 항상 알립니다.
+ * 바뀌지 않은 경우에도 이유를 보여 주어 '왜 안 붙었지' 를 없앱니다.
+ */
+function balloonText(balloon, verb) {
+  if (!balloon) return "";
+  if (balloon.updated) {
+    return `\n\n기존 숏컷 기록에도 🎈를 ${verb}.\n${balloon.previous} → ${balloon.name}`;
+  }
+  return balloon.reason ? `\n\n숏컷 기록 🎈 표시: ${balloon.reason}` : "";
+}
+
 function flash(card, cls, text) {
   const old = card.querySelector(".msg");
   if (old) old.remove();
@@ -460,9 +474,14 @@ listEl.addEventListener("click", async (e) => {
 
     if (act === "approve") {
       const added = json.applied?.added?.name;
+      // 재도전 승인 시 기존 숏컷 기록의 이름도 함께 바뀝니다.
+      // 조용히 바꾸면 나중에 이유를 알기 어려우므로 결과를 알립니다.
+      const balloonMsg = balloonText(json.balloon, "붙였습니다");
+
       await xpAlert(
         `data.js 에 반영했습니다.` +
           (added ? `\n등록된 이름: ${added}` : "") +
+          balloonMsg +
           pendingMsg,
         { title: "승인 완료", symbol: "i" },
       );
@@ -472,6 +491,7 @@ listEl.addEventListener("click", async (e) => {
       await xpAlert(
         `다시 검토 대기로 되돌렸습니다.\n` +
           `data.js 에서 기록을 제거했습니다.` +
+          balloonText(json.balloon, "떼어냈습니다") +
           (json.wasPublished
             ? `\n\n이미 발행된 기록이라 삭제를 반영하려면 발행이 필요합니다.\n` +
               `미발행 ${json.unpublished}건`
@@ -483,6 +503,7 @@ listEl.addEventListener("click", async (e) => {
     if (act === "revert") {
       await xpAlert(
         `data.js 에서 기록을 삭제했습니다.` +
+          balloonText(json.balloon, "떼어냈습니다") +
           (json.followUp ? `\n\n[후속 조치] ${json.followUp}` : "") +
           pendingMsg,
         { title: "승인 취소 완료", symbol: "i" },

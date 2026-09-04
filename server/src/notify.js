@@ -169,6 +169,14 @@ function notifyReviewed(sub, action, extra = {}) {
       inline: false,
     });
   }
+  // 재도전 승인으로 기존 숏컷 기록의 이름이 함께 바뀐 경우
+  if (extra.balloon?.updated) {
+    fields.push({
+      name: "숏컷 기록 표시",
+      value: safe(`🎈 추가 — ${extra.balloon.previous} → ${extra.balloon.name}`),
+      inline: false,
+    });
+  }
   if (extra.note) {
     fields.push({ name: "메모", value: safe(extra.note), inline: false });
   }

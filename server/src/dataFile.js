@@ -540,6 +540,153 @@ function updateRecordUrls(arrayName, index, urls, filePath = DATA_JS_PATH) {
 }
 
 /**
+ * 재도전이 함께 등록될 때, 기존 숏컷 기록의 이름에 '🎈' 를 붙입니다.
+ *
+ * 표기 규칙상 🎈는 '숏컷과 재도전 양쪽에 있는 사람' 을 구분하는 표시입니다.
+ * 그런데 숏컷은 예전에 등록되고 재도전이 나중에 승인되는 경우가 많아,
+ * 재도전을 승인하는 시점에 기존 숏컷 항목을 찾아 고쳐 주어야 합니다.
+ * (실제로 이 처리가 없어 '연이', '계춘회' 두 건에 🎈가 빠져 있었습니다)
+ *
+ * @returns {{updated: boolean, name?: string, reason?: string}}
+ */
+function markShortcutBalloon(rawName, filePath = DATA_JS_PATH) {
+  const target = baseName(rawName);
+  if (!target) return { updated: false, reason: "이름이 비어 있습니다." };
+
+  const before = readData(filePath);
+  const matches = [];
+  before.SHORTCUT_DATA.forEach((item, index) => {
+    if (baseName(item.name) === target) matches.push({ item, index });
+  });
+
+  if (!matches.length) {
+    return { updated: false, reason: "기존 숏컷 기록이 없습니다." };
+  }
+  if (matches.length > 1) {
+    // 같은 사람이 숏컷에 여러 번 있을 일은 없습니다. 있으면 사람이 봐야 합니다.
+    return {
+      updated: false,
+      reason: `숏컷 기록이 ${matches.length}개 있어 자동으로 고치지 않았습니다.`,
+    };
+  }
+
+  const { item, index } = matches[0];
+  if (item.name.includes("🎈")) {
+    return { updated: false, reason: "이미 🎈가 붙어 있습니다." };
+  }
+
+  const nextName = `${item.name}🎈`;
+  const next = { name: nextName, gameTime: item.gameTime };
+  if (item.tosTime !== undefined && item.tosTime !== null) {
+    next.tosTime = item.tosTime;
+  }
+  if (item.addedAt) next.addedAt = item.addedAt;
+  for (const key of URL_KEYS) {
+    if (item[key]) next[key] = item[key];
+  }
+
+  const src = before.src;
+  const { start, end } = findItemRange(src, "SHORTCUT_DATA", index);
+  const replacement = serializeItem(next, "  ").replace(/,$/, "").trimStart();
+  const updated = src.slice(0, start) + replacement + src.slice(end);
+
+  // 쓰기 전에 결과물을 검증합니다.
+  const ctx = { __out: null };
+  vm.createContext(ctx);
+  try {
+    vm.runInContext(`${updated};__out={${ARRAY_NAMES.join(",")}};`, ctx, {
+      timeout: 5000,
+    });
+  } catch (e) {
+    throw new Error(`생성된 data.js 가 올바르지 않습니다: ${e.message}`);
+  }
+  for (const key of ARRAY_NAMES) {
+    if (ctx.__out[key].length !== before[key].length) {
+      throw new Error(`${key} 개수가 달라졌습니다.`);
+    }
+  }
+  const after = ctx.__out.SHORTCUT_DATA[index];
+  if (after.name !== nextName || after.gameTime !== item.gameTime) {
+    throw new Error("수정 결과가 예상과 다릅니다. 중단합니다.");
+  }
+
+  fs.writeFileSync(filePath, updated, "utf8");
+  return { updated: true, name: nextName, previous: item.name, index };
+}
+
+/**
+ * 재도전 기록이 사라지면 기존 숏컷 기록의 '🎈' 도 떼어냅니다.
+ *
+ * 🎈는 '재도전도 함께 있는 사람' 이라는 뜻이므로, 승인 취소나
+ * 대기 되돌리기로 재도전이 없어지면 표시도 함께 없애야 합니다.
+ * 단, 같은 사람의 다른 재도전 기록이 아직 남아 있으면 그대로 둡니다.
+ */
+function unmarkShortcutBalloon(rawName, filePath = DATA_JS_PATH) {
+  const target = baseName(rawName);
+  if (!target) return { updated: false, reason: "이름이 비어 있습니다." };
+
+  const before = readData(filePath);
+
+  // 다른 재도전 기록이 남아 있으면 🎈를 유지해야 합니다.
+  const stillHasRetry = before.RETRY_DATA.some(
+    (i) => baseName(i.name) === target,
+  );
+  if (stillHasRetry) {
+    return { updated: false, reason: "다른 재도전 기록이 남아 있습니다." };
+  }
+
+  const matches = [];
+  before.SHORTCUT_DATA.forEach((item, index) => {
+    if (baseName(item.name) === target && item.name.includes("🎈")) {
+      matches.push({ item, index });
+    }
+  });
+  if (!matches.length) {
+    return { updated: false, reason: "🎈가 붙은 숏컷 기록이 없습니다." };
+  }
+  if (matches.length > 1) {
+    return {
+      updated: false,
+      reason: `숏컷 기록이 ${matches.length}개 있어 자동으로 고치지 않았습니다.`,
+    };
+  }
+
+  const { item, index } = matches[0];
+  const nextName = item.name.replace(/🎈/g, "");
+  const next = { name: nextName, gameTime: item.gameTime };
+  if (item.tosTime !== undefined && item.tosTime !== null) {
+    next.tosTime = item.tosTime;
+  }
+  if (item.addedAt) next.addedAt = item.addedAt;
+  for (const key of URL_KEYS) {
+    if (item[key]) next[key] = item[key];
+  }
+
+  const src = before.src;
+  const { start, end } = findItemRange(src, "SHORTCUT_DATA", index);
+  const replacement = serializeItem(next, "  ").replace(/,$/, "").trimStart();
+  const updated = src.slice(0, start) + replacement + src.slice(end);
+
+  const ctx = { __out: null };
+  vm.createContext(ctx);
+  try {
+    vm.runInContext(`${updated};__out={${ARRAY_NAMES.join(",")}};`, ctx, {
+      timeout: 5000,
+    });
+  } catch (e) {
+    throw new Error(`생성된 data.js 가 올바르지 않습니다: ${e.message}`);
+  }
+  for (const key of ARRAY_NAMES) {
+    if (ctx.__out[key].length !== before[key].length) {
+      throw new Error(`${key} 개수가 달라졌습니다.`);
+    }
+  }
+
+  fs.writeFileSync(filePath, updated, "utf8");
+  return { updated: true, name: nextName, previous: item.name, index };
+}
+
+/**
  * 배열의 index 번째 항목이 차지하는 텍스트 범위를 찾습니다.
  *
  * 원본에는 주석과 주석 처리된 항목이 섞여 있으므로,
@@ -618,4 +765,6 @@ module.exports = {
   serializeItem,
   listRecords,
   updateRecordUrls,
+  markShortcutBalloon,
+  unmarkShortcutBalloon,
 };

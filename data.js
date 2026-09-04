@@ -1332,7 +1332,7 @@ const SHORTCUT_DATA = [
     vodUrl: "https://chzzk.naver.com/video/11485635?currentTime=38534",
   },
   {
-    name: "연이",
+    name: "연이🎈",
     gameTime: "23분 41초",
     tosTime: "3시간 50분 39초",
     channelUrl: "https://chzzk.naver.com/75b643e50481d4ec373f77b58a41746f",
@@ -1358,7 +1358,7 @@ const SHORTCUT_DATA = [
     channelUrl: "https://chzzk.naver.com/aed9d6557bebfb21ab3d081b862cdd2d",
   },
   {
-    name: "계춘회",
+    name: "계춘회🎈",
     gameTime: "21분 57초",
     tosTime: "2시간 22분 42초",
     channelUrl: "https://chzzk.naver.com/a9a343510e132ea3026ff3cf682820b5",

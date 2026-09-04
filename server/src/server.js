@@ -481,6 +481,24 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
       vodUrl: sub.vod_url,
     });
 
+    // 재도전을 승인하면, 같은 사람의 기존 숏컷 기록에 🎈를 붙입니다.
+    //
+    // 표기 규칙상 🎈는 '숏컷과 재도전 양쪽에 있는 사람' 을 뜻합니다.
+    // 숏컷이 먼저 등록되고 재도전이 나중에 승인되는 순서가 대부분이라,
+    // 재도전 승인 시점에 기존 숏컷 항목을 찾아 고쳐 주어야 합니다.
+    // (markShortcutBalloon 이 숏컷 기록 유무를 스스로 판단하므로
+    //  관리자가 따로 체크할 필요가 없습니다)
+    //
+    // 실패해도 승인 자체는 유효하므로 결과만 알려 주고 넘어갑니다.
+    let balloon = null;
+    if (sub.is_retry) {
+      try {
+        balloon = dataFile.markShortcutBalloon(rawName);
+      } catch (e) {
+        balloon = { updated: false, reason: e.message };
+      }
+    }
+
     // 실제 등록된 값을 DB 에도 반영해 두어야
     // 나중에 승인 취소 시 같은 값으로 찾을 수 있습니다.
     if (
@@ -502,8 +520,9 @@ app.post("/api/admin/submissions/:id/approve", requireAdmin, async (req, res) =>
     notify.notifyReviewed(sub, "approved", {
       note: req.body?.note,
       unpublished,
+      balloon,
     });
-    res.json({ ok: true, applied, unpublished });
+    res.json({ ok: true, applied, unpublished, balloon });
   } catch (e) {
     // data.js 수정 실패 시 상태를 바꾸지 않습니다.
     res.status(500).json({ ok: false, error: e.message });
@@ -545,6 +564,16 @@ app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => 
       arrayName: dataFile.arrayNameFor(sub),
     });
 
+    // 재도전이 사라졌으면 숏컷 기록의 🎈도 함께 떼어냅니다.
+    let balloon = null;
+    if (sub.is_retry) {
+      try {
+        balloon = dataFile.unmarkShortcutBalloon(sub.streamer_name);
+      } catch (e) {
+        balloon = { updated: false, reason: e.message };
+      }
+    }
+
     // 이미 발행됐던 건이면 '삭제'를 발행해야 리더보드에서도 사라집니다.
     // 아직 발행 전이었다면 추가·삭제가 상쇄되므로 발행할 것이 없습니다.
     db.reopenSubmission(sub.id, String(req.body?.note || ""), wasPublished);
@@ -554,6 +583,7 @@ app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => 
       note: req.body?.note,
       // 발행 전이었다면 추가·삭제가 상쇄되어 발행할 것이 없습니다.
       unpublished: wasPublished ? unpublished : 0,
+      balloon,
     });
 
     res.json({
@@ -561,6 +591,7 @@ app.post("/api/admin/submissions/:id/reopen", requireAdmin, async (req, res) => 
       reverted,
       wasPublished,
       unpublished,
+      balloon,
     });
   } catch (e) {
     res.status(500).json({ ok: false, error: e.message });
@@ -593,6 +624,18 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
       arrayName: dataFile.arrayNameFor(sub),
     });
 
+    // 재도전이 사라졌으면 숏컷 기록의 🎈도 떼어냅니다.
+    // (🎈는 '재도전도 함께 있는 사람' 이라는 뜻이므로)
+    // 위에서 재도전 항목을 이미 지운 뒤라야 판단이 정확합니다.
+    let balloon = null;
+    if (sub.is_retry) {
+      try {
+        balloon = dataFile.unmarkShortcutBalloon(sub.streamer_name);
+      } catch (e) {
+        balloon = { updated: false, reason: e.message };
+      }
+    }
+
     // 삭제도 발행 대상입니다. (커밋은 '발행' 시 한 번에)
     db.revertApproval(sub.id, reason, String(req.body?.note || ""));
 
@@ -601,12 +644,14 @@ app.post("/api/admin/submissions/:id/revert", requireAdmin, async (req, res) => 
       reason,
       note: req.body?.note,
       unpublished,
+      balloon,
     });
 
     res.json({
       ok: true,
       reverted,
       unpublished,
+      balloon,
       // 캐주얼 모드는 기존 관례상 하단 삭제 목록에 남깁니다.
       followUp:
         reason === "casual"
