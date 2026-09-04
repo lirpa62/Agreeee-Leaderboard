@@ -2,7 +2,7 @@ const STREAMER_COLORS = {
   "연이*": "#b3d5ee",
   비웬: "#F79308",
   방찌: "#d0ebff",
-  "모모메이 유메 Orbi": "#fb70ab",
+  "모모메이 유메 Orbi": "#FB70AB",
   허니츄: "#FFD8D9",
   김뚜띠: "#36A2EB",
   램램: "#92efe2",
@@ -1755,5 +1755,12 @@ const SPEEDRUN_DATA = [
     addedAt: "2026-09-04T00:42:55.844Z",
     channelUrl: "https://chzzk.naver.com/b8119eaadca58a5cd0c8cf2d48af8bea",
     vodUrl: "https://youtu.be/ccAq9kJxJDY?si=oOQsLoh9YYlFv_ce&t=25315",
+  },
+  {
+    name: "모모메이 유메 Orbi",
+    gameTime: "14분",
+    addedAt: "2026-09-04T17:10:19.161Z",
+    channelUrl: "https://chzzk.naver.com/3bc90b22f6b7925e5b92767562f44f3b",
+    vodUrl: "https://www.youtube.com/watch?si=WfFNLMombOgCuyBx&t=11026&v=42eOkRld3IU&feature=youtu.be",
   },
 ];
