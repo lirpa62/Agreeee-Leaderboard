@@ -184,7 +184,21 @@ GITHUB_WEBHOOK_SECRET=<위에서 만든 값>
 DEPLOY_BRANCH=main
 ```
 
-2. `sudo` 비밀번호 없이 재시작할 수 있게 허용합니다.
+2. 유닛 파일을 시스템에 설치합니다.
+
+⚠ `git pull` 은 저장소의 파일만 바꿉니다. `/etc/systemd/system/` 에
+설치된 유닛은 그대로이므로 직접 복사해야 반영됩니다.
+`NoNewPrivileges=true` 가 남아 있으면 서비스 안에서 `sudo` 가 아예
+동작하지 않아 자동 재시작이 실패합니다.
+
+```bash
+sudo cp ~/agreeee_leaderboard/server/deploy/agreeee-server.service \
+  /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl restart agreeee-server
+```
+
+3. `sudo` 비밀번호 없이 재시작할 수 있게 허용합니다.
 
 ```bash
 echo "$USER ALL=(root) NOPASSWD: /usr/bin/systemd-run, /bin/systemctl restart agreeee-server" \
@@ -193,7 +207,7 @@ sudo chmod 440 /etc/sudoers.d/agreeee-deploy
 sudo visudo -c   # 문법 확인 (틀리면 sudo 가 전부 막히므로 꼭 확인)
 ```
 
-3. GitHub 저장소 → Settings → Webhooks → **Add webhook**
+4. GitHub 저장소 → Settings → Webhooks → **Add webhook**
 
 | 항목 | 값 |
 | --- | --- |
@@ -202,7 +216,7 @@ sudo visudo -c   # 문법 확인 (틀리면 sudo 가 전부 막히므로 꼭 확
 | Secret | 1번에서 만든 값 |
 | Events | Just the push event |
 
-4. 서버를 재시작하면 적용됩니다.
+5. 서버를 재시작하면 적용됩니다.
 
 **동작**
 
