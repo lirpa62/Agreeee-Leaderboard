@@ -243,6 +243,38 @@ app.post(
     }
     const v = checked.value;
 
+    // 스피드런은 갱신제입니다. 기존 기록보다 느리거나 같으면
+    // 등록해도 순위가 그대로라 접수하지 않습니다.
+    // (관리자가 검토할 이유가 없는 제출을 미리 걸러냅니다)
+    if (v.kind === "speedrun") {
+      try {
+        const best = dataFile.bestSpeedrun(v.streamerName);
+        const now = dataFile.parseTimeToMinutes(v.gameTime);
+        if (best && now != null && now >= best.minutes) {
+          const same = now === best.minutes;
+          return res.status(409).json({
+            ok: false,
+            // 화면에서 안내문을 따로 꾸밀 수 있도록 구조도 함께 보냅니다.
+            reason: "slower_than_best",
+            best: best.gameTime,
+            submitted: v.gameTime,
+            // 기존 기록이 명예의 전당에서 온 경우 설명이 필요합니다.
+            // (스피드런에 등록한 적 없는데 '이미 있다'고 하면 혼란스럽습니다)
+            source: best.source,
+            errors: [
+              same
+                ? `이미 등록된 기록과 같습니다. (현재 기록 ${best.gameTime})`
+                : `이미 등록된 기록보다 느립니다. ` +
+                  `(현재 기록 ${best.gameTime} / 제출하신 기록 ${v.gameTime})`,
+            ],
+          });
+        }
+      } catch (e) {
+        // data.js 를 읽지 못해도 제출 자체는 막지 않습니다.
+        console.warn(`[제출] 스피드런 기록 비교 실패: ${e.message}`);
+      }
+    }
+
     // 중복 대기 제출 방지
     const dup = db.findPendingDuplicate(v.kind, v.streamerName);
     if (dup) {

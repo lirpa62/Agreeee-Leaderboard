@@ -550,6 +550,59 @@ function updateRecordUrls(arrayName, index, urls, filePath = DATA_JS_PATH) {
 }
 
 /**
+ * 이 스트리머가 스피드런 순위에 올려 둔 현재 최고 기록을 찾습니다.
+ *
+ * 스피드런 리그는 SPEEDRUN_DATA 뿐 아니라 명예의 전당의 클리어 회차
+ * 시간도 함께 줄을 세웁니다(index.js 의 병합 로직). 그래서 비교 대상도
+ * 양쪽을 모두 봐야 화면에 보이는 순위와 어긋나지 않습니다.
+ *
+ * 스피드런은 갱신제라서, 기존보다 느린 기록은 등록할 이유가 없습니다.
+ *
+ * @returns {{gameTime: string, minutes: number, source: string} | null}
+ */
+function bestSpeedrun(rawName, filePath = DATA_JS_PATH) {
+  const target = baseName(rawName);
+  if (!target) return null;
+
+  const data = readData(filePath);
+  let best = null;
+
+  const consider = (item, source) => {
+    if (baseName(item.name) !== target) return;
+    const minutes = parseTimeToMinutes(item.gameTime);
+    if (minutes == null) return;
+    if (!best || minutes < best.minutes) {
+      best = { gameTime: item.gameTime, minutes, source };
+    }
+  };
+
+  for (const item of data.SPEEDRUN_DATA) consider(item, "speedrun");
+  // 명예의 전당·재도전의 회차 시간도 스피드런 순위에 반영됩니다.
+  for (const item of data.RECORD_DATA) consider(item, "record");
+  for (const item of data.RETRY_DATA) consider(item, "record");
+
+  return best;
+}
+
+/**
+ * data.js 표기('3분 8.52초', '1시간 30분 54초')를 분 단위 숫자로.
+ * index.js 의 parseTime 과 같은 규칙입니다.
+ */
+function parseTimeToMinutes(text) {
+  const s = String(text || "");
+  if (!s.trim()) return null;
+  const h = /(\d+(?:\.\d+)?)\s*시간/.exec(s);
+  const m = /(\d+(?:\.\d+)?)\s*분/.exec(s);
+  const sec = /(\d+(?:\.\d+)?)\s*초/.exec(s);
+  if (!h && !m && !sec) return null;
+  return (
+    (h ? parseFloat(h[1]) * 60 : 0) +
+    (m ? parseFloat(m[1]) : 0) +
+    (sec ? parseFloat(sec[1]) / 60 : 0)
+  );
+}
+
+/**
  * 스트리머 색상을 추가하거나 변경합니다.
  *
  * STREAMER_COLORS 는 이름을 키로 쓰는 표라서, 같은 사람이 여러 리그에
@@ -826,4 +879,6 @@ module.exports = {
   markShortcutBalloon,
   unmarkShortcutBalloon,
   setStreamerColor,
+  bestSpeedrun,
+  parseTimeToMinutes,
 };

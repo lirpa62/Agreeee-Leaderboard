@@ -492,6 +492,29 @@ $("submitForm").addEventListener("submit", async (e) => {
     if (!json.ok) {
       // Turnstile 토큰은 1회용이므로 실패 시 반드시 재발급받아야 합니다.
       resetCaptcha();
+
+      // 스피드런은 갱신제라 기존보다 느린 기록은 접수되지 않습니다.
+      // 목록에 묻히지 않도록 다이얼로그로 분명하게 알립니다.
+      if (json.reason === "slower_than_best") {
+        const same = json.submitted === json.best;
+        // 스피드런에 올린 적이 없어도 명예의 전당 회차 시간이
+        // 스피드런 순위에 함께 오릅니다. 그 경우를 설명해 줍니다.
+        const where =
+          json.source === "record"
+            ? `\n(명예의 전당에 등록된 회차 시간이 스피드런 순위에 함께 반영됩니다)`
+            : "";
+        xpModal(
+          (same
+            ? `이미 등록된 기록과 같은 시간입니다.`
+            : `이미 등록된 기록보다 느립니다.`) +
+            `\n\n현재 기록 : ${json.best}${where}\n제출한 기록 : ${json.submitted}\n\n` +
+            `스피드런은 기존 기록을 넘어설 때만 갱신됩니다.\n` +
+            `더 빠른 기록으로 다시 도전해 주세요!`,
+          { title: "갱신되지 않는 기록", symbol: "!" },
+        );
+        return;
+      }
+
       showErrors(json.errors || [json.error || "제출에 실패했습니다."]);
       return;
     }
