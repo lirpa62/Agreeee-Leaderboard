@@ -466,6 +466,82 @@ const sortedShortcutData = [...processedShortcutData].sort(
 let activePoint = null;
 let chartFocusTimeout = null;
 
+/* ---------------------------------------------------------
+   평균선
+   화면이 4분면으로 나뉘어 '약관은 오래 봤지만 클리어는 빨랐다' 같은
+   위치를 한눈에 읽을 수 있습니다.
+
+   평균/중앙값이 X축 1.16배, Y축 1.06배로 치우침이 크지 않아
+   평균을 그대로 씁니다.
+   --------------------------------------------------------- */
+let showAverage = true;
+let averages = { x: 0, y: 0 };
+
+/** 현재 차트에 그려진 데이터로 평균을 다시 계산합니다. */
+function computeAverages(rows) {
+  if (!rows.length) return { x: 0, y: 0 };
+  const sum = rows.reduce((a, r) => ({ x: a.x + r.x, y: a.y + r.y }), {
+    x: 0,
+    y: 0,
+  });
+  return { x: sum.x / rows.length, y: sum.y / rows.length };
+}
+
+const averageLinePlugin = {
+  id: "averageLinePlugin",
+  beforeDatasetsDraw: (chart) => {
+    // 특정 점을 보고 있을 때는 그 점의 crosshair 와 겹쳐 지저분해집니다.
+    if (!showAverage || activePoint !== null) return;
+    if (!averages.x || !averages.y) return;
+    // 구버전 차트는 원래 모습 그대로 두기로 했습니다.
+    if (document.body.dataset.ui !== "xp") return;
+
+    const ctx = chart.ctx;
+    const xAxis = chart.scales.x;
+    const yAxis = chart.scales.y;
+
+    const px = xAxis.getPixelForValue(averages.x);
+    const py = yAxis.getPixelForValue(averages.y);
+
+    ctx.save();
+    ctx.setLineDash([6, 4]);
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(120, 120, 120, 0.75)";
+
+    // 확대·이동으로 평균이 화면 밖이면 선을 그리지 않습니다.
+    const xVisible = px >= xAxis.left && px <= xAxis.right;
+    const yVisible = py >= yAxis.top && py <= yAxis.bottom;
+
+    ctx.beginPath();
+    if (xVisible) {
+      ctx.moveTo(px, yAxis.top);
+      ctx.lineTo(px, yAxis.bottom);
+    }
+    if (yVisible) {
+      ctx.moveTo(xAxis.left, py);
+      ctx.lineTo(xAxis.right, py);
+    }
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    ctx.font = "bold 10px 'Pretendard Variable', Pretendard, sans-serif";
+    ctx.fillStyle = "#5a5a5a";
+
+    // 선이 화면 밖이어도 값은 알 수 있도록 축 가장자리에 붙여 둡니다.
+    if (xVisible) {
+      ctx.textAlign = "center";
+      ctx.textBaseline = "top";
+      ctx.fillText(`평균 ${formatTime(averages.x, false)}`, px, yAxis.top + 3);
+    }
+    if (yVisible) {
+      ctx.textAlign = "left";
+      ctx.textBaseline = "bottom";
+      ctx.fillText(`평균 ${formatTime(averages.y, false)}`, xAxis.left + 4, py - 3);
+    }
+    ctx.restore();
+  },
+};
+
 const hoverAxisPlugin = {
   id: "hoverAxisPlugin",
   beforeDatasetsDraw: (chart) => {
@@ -566,6 +642,8 @@ const initialChartData = assignLabelRank(
   ),
 );
 
+averages = computeAverages(initialChartData);
+
 const myChart = new Chart(ctx, {
   type: "scatter",
   data: {
@@ -589,7 +667,8 @@ const myChart = new Chart(ctx, {
       },
     ],
   },
-  plugins: [hoverAxisPlugin],
+  // 평균선을 먼저 그려 점 아래에 깔리게 합니다.
+  plugins: [averageLinePlugin, hoverAxisPlugin],
   options: {
     responsive: true,
     maintainAspectRatio: false,
@@ -1329,6 +1408,8 @@ searchInput.addEventListener("keyup", function (e) {
 function updateChart() {
   const displayData = getDisplayData();
   myChart.data.datasets[0].data = displayData;
+  // 숏컷 포함 여부가 바뀌면 평균도 달라집니다.
+  averages = computeAverages(displayData);
   // 데이터가 바뀌면 숨김 인원 수도 달라지므로 함께 갱신
   applyXZoom();
 }
@@ -1619,6 +1700,17 @@ window.addEventListener("scroll", checkScroll);
 checkScroll();
 
 document.getElementById("toggleShortcut").addEventListener("change", updateAll);
+
+// 평균선 표시 토글 (차트가 빽빽해 거슬릴 수 있어 끌 수 있게 둡니다)
+document.getElementById("toggleAverage").addEventListener("change", (e) => {
+  showAverage = e.target.checked;
+  myChart.update();
+});
+
+// UI 버전을 바꾸면 평균선 표시 여부도 달라지므로 다시 그립니다.
+document.getElementById("uiVersionToggle").addEventListener("click", () => {
+  if (typeof myChart !== "undefined") myChart.update();
+});
 
 // 초기 실행
 renderRanking();

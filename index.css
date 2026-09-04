@@ -1020,3 +1020,20 @@ h2 {
   color: #888;
   font-size: 0.9em;
 }
+
+/* 차트 컨트롤의 평균선 토글 */
+.chart-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  color: #555;
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.chart-toggle input {
+  cursor: pointer;
+  margin: 0;
+}

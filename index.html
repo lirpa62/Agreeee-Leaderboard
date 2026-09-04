@@ -161,6 +161,11 @@
               🔍 전체 보기 (18시간까지)
             </button>
             <span id="xZoomHint" class="chart-hint"></span>
+            <!-- 평균선은 신버전 차트에만 있습니다. (구버전 차트는 그대로) -->
+            <label class="chart-toggle xp-only" title="X·Y축 평균 위치를 점선으로 표시합니다">
+              <input type="checkbox" id="toggleAverage" checked />
+              평균선 보기
+            </label>
           </div>
           <!-- 모바일에서는 이 컨테이너가 가로 스크롤됩니다.
                111개 점의 산점도는 좁은 화면에 그대로 욱여넣으면 못 읽습니다. -->
