@@ -1,9 +1,9 @@
 const STREAMER_COLORS = {
   "연이*": "#b3d5ee",
-  "비웬": "#F79308",
-  "방찌": "#FFFFFF",
+  비웬: "#F79308",
+  방찌: "#d0ebff",
   "모모메이 유메 Orbi": "#fb70ab",
-  "허니츄": "#FFD8D9",
+  허니츄: "#FFD8D9",
   김뚜띠: "#36A2EB",
   램램: "#92efe2",
   나나양: "#fc3",
@@ -1022,7 +1022,7 @@ const RETRY_DATA = [
   {
     name: "모라라*",
     gameTime: "8분 23.08초",
-    tosTime: "4시간 41분 8초",
+    tosTime: "4시간 41분 48초",
     channelUrl: "https://chzzk.naver.com/6bd0bb97d31365e7834d8113bb01d889",
     clipUrl: "https://chzzk.naver.com/clips/VhNrWi7iuo",
   },
@@ -1246,7 +1246,8 @@ const SHORTCUT_DATA = [
     gameTime: "24분 7.77초",
     tosTime: "3시간 49분 18초",
     channelUrl: "https://chzzk.naver.com/9ff4bdc7aa4f3384e84db402bc128b0c",
-    vodUrl: "https://www.youtube.com/live/pZEqtlhlIVY?si=ufSkLK-FG5Agrtpf&t=22002",
+    vodUrl:
+      "https://www.youtube.com/live/pZEqtlhlIVY?si=ufSkLK-FG5Agrtpf&t=22002",
   },
   {
     name: "김나성",
