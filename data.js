@@ -1,4 +1,5 @@
 const STREAMER_COLORS = {
+  "류시호 RyuSiho": "#ffe1a9",
   "연이*": "#b3d5ee",
   비웬: "#F79308",
   방찌: "#d0ebff",
@@ -998,6 +999,14 @@ const RECORD_DATA = [
     addedAt: "2026-09-04T00:40:38.972Z",
     channelUrl: "https://chzzk.naver.com/fd3b54f2ce729c7a7172ed639720632d",
     clipUrl: "https://chzzk.naver.com/clips/adpRlAzwCp",
+  },
+  {
+    name: "류시호 RyuSiho",
+    gameTime: "13분 29.01초",
+    tosTime: "12시간 49분 42초",
+    addedAt: "2026-09-20T22:23:43.870Z",
+    channelUrl: "https://chzzk.naver.com/f36320c432d9f06095ce2cfbbf681c26",
+    clipUrl: "https://chzzk.naver.com/clips/0rWNBTCBlK",
   },
 ];
 
