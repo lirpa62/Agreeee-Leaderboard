@@ -122,7 +122,7 @@ const STREAMER_COLORS = {
   당근카렌: "#A08DBA",
   쌍베: "#1d4d0a",
   "이치카 히비": "#93B7E2",
-  "블레어 로즈": "#e88f8f",
+  "블레어 로즈": "#CA4844",
   "비올레타 모네": "#cab6dd",
   "나는 만타": "#49E4ED",
   "아카네 리제": "#971b2f",
@@ -1646,6 +1646,14 @@ const SHORTCUT_DATA = [
     tosTime: "18시간 28분 11초",
     channelUrl: "https://chzzk.naver.com/59aa824e4c4a56dd51e7a5e2e9172648",
     clipUrl: "https://chzzk.naver.com/clips/PVxbiSCb6f",
+  },
+  {
+    name: "블레어 로즈",
+    gameTime: "32분 20.66초",
+    tosTime: "10시간 6분 8초",
+    addedAt: "2026-10-01T21:45:39.425Z",
+    channelUrl: "https://chzzk.naver.com/live/dae2de8eaa005a59163f2e4c045e1aa1",
+    clipUrl: "https://chzzk.naver.com/clips/0lPt49G87m",
   },
 ];
 
