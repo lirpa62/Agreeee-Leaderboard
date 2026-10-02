@@ -737,15 +737,24 @@ function markShortcutBalloon(rawName, filePath = DATA_JS_PATH) {
   const src = before.src;
   const { start, end } = findItemRange(src, "SHORTCUT_DATA", index);
   const replacement = serializeItem(next, "  ").replace(/,$/, "").trimStart();
-  const updated = src.slice(0, start) + replacement + src.slice(end);
+  let updated = src.slice(0, start) + replacement + src.slice(end);
+
+  // 화면은 장식이 포함된 이름으로 색상을 찾습니다. 기존 키는 다른 리그에서
+  // 계속 쓸 수 있으므로 남겨 두고, 새 🎈 키에도 같은 색상을 복사합니다.
+  const previousColor = before.STREAMER_COLORS?.[item.name];
+  if (previousColor) {
+    updated = addColor(updated, nextName, previousColor, { overwrite: true });
+  }
 
   // 쓰기 전에 결과물을 검증합니다.
   const ctx = { __out: null };
   vm.createContext(ctx);
   try {
-    vm.runInContext(`${updated};__out={${ARRAY_NAMES.join(",")}};`, ctx, {
-      timeout: 5000,
-    });
+    vm.runInContext(
+      `${updated};__out={${ARRAY_NAMES.join(",")},STREAMER_COLORS};`,
+      ctx,
+      { timeout: 5000 },
+    );
   } catch (e) {
     throw new Error(`생성된 data.js 가 올바르지 않습니다: ${e.message}`);
   }
@@ -757,6 +766,9 @@ function markShortcutBalloon(rawName, filePath = DATA_JS_PATH) {
   const after = ctx.__out.SHORTCUT_DATA[index];
   if (after.name !== nextName || after.gameTime !== item.gameTime) {
     throw new Error("수정 결과가 예상과 다릅니다. 중단합니다.");
+  }
+  if (previousColor && ctx.__out.STREAMER_COLORS[nextName] !== previousColor) {
+    throw new Error("기존 색상을 🎈 이름에 보존하지 못했습니다.");
   }
 
   fs.writeFileSync(filePath, updated, "utf8");

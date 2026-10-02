@@ -429,6 +429,23 @@ function formatTime(totalMinutes, showDecimals = false) {
   return result.trim() || "0분";
 }
 
+function streamerColor(name) {
+  const exact = STREAMER_COLORS[name];
+  if (exact) return exact;
+
+  // 재도전(*)이나 풍선(🎈) 표기가 나중에 붙어도 기존 색상을 유지합니다.
+  const base = String(name || "")
+    .replace(/\*/g, "")
+    .replace(/🎈/g, "")
+    .trim();
+  return (
+    STREAMER_COLORS[base] ||
+    STREAMER_COLORS[`${base}*`] ||
+    STREAMER_COLORS[`${base}🎈`] ||
+    DEFAULT_COLOR
+  );
+}
+
 function processData(dataArray, type = "normal") {
   // type: 'normal' | 'shortcut' | 'retry'
   return dataArray.map((item) => {
@@ -442,7 +459,7 @@ function processData(dataArray, type = "normal") {
       x: tosMin, // X축: 이용약관 시간
       y: gameMin, // Y축: 본 게임 시간
       totalMin: totalMin,
-      color: STREAMER_COLORS[item.name] || DEFAULT_COLOR,
+      color: streamerColor(item.name),
       type: type, // 데이터 타입 저장
     };
   });
@@ -465,6 +482,7 @@ const sortedShortcutData = [...processedShortcutData].sort(
 
 let activePoint = null;
 let chartFocusTimeout = null;
+let comparisonPointIndexes = new Set();
 
 /* ---------------------------------------------------------
    평균선
@@ -728,6 +746,7 @@ const ctx = document.getElementById("clearChart").getContext("2d");
      18시간까지 펼치면 대다수가 왼쪽에 짓눌립니다.
    --------------------------------------------------------- */
 const LABEL_RANK_LIMIT = 15;
+const COMPARISON_LABEL_LIMIT = 5;
 const X_ZOOM_LIMIT = 360; // 6시간
 let isXZoomed = true; // 기본: 확대 보기
 
@@ -743,6 +762,10 @@ function assignLabelRank(list) {
     d.labelRank = i;
   });
   return list;
+}
+
+function isFocusedPoint(index) {
+  return activePoint === index || comparisonPointIndexes.has(index);
 }
 
 // 차트 초기 데이터에 재도전 데이터 포함 (정렬 포함)
@@ -762,12 +785,12 @@ const myChart = new Chart(ctx, {
         label: "클리어 기록",
         data: initialChartData,
         backgroundColor: (context) => {
-          if (activePoint !== null && context.dataIndex !== activePoint)
+          if (activePoint !== null && !isFocusedPoint(context.dataIndex))
             return "#e0e0e0";
           return context.raw ? context.raw.color : "#333";
         },
         borderColor: (context) => {
-          if (activePoint !== null && context.dataIndex !== activePoint)
+          if (activePoint !== null && !isFocusedPoint(context.dataIndex))
             return "#cccccc";
           return context.raw ? context.raw.color : "#333";
         },
@@ -797,14 +820,20 @@ const myChart = new Chart(ctx, {
           : "default";
 
       if (elements && elements.length > 0) {
+        if (chartFocusTimeout) {
+          clearTimeout(chartFocusTimeout);
+          chartFocusTimeout = null;
+        }
         const newIndex = elements[0].index;
         if (activePoint !== newIndex) {
           activePoint = newIndex;
+          comparisonPointIndexes = nearbyLabelIndexes(newIndex);
           myChart.update();
         }
       } else {
         if (activePoint !== null) {
           activePoint = null;
+          comparisonPointIndexes.clear();
           myChart.update();
         }
       }
@@ -1070,11 +1099,12 @@ const myChart = new Chart(ctx, {
           // 구버전은 기존처럼 모든 이름표를 표시
           if (!isXpUi()) return true;
           if (context.dataIndex === activePoint) return true;
+          if (comparisonPointIndexes.has(context.dataIndex)) return true;
           const d = context.dataset.data[context.dataIndex];
           return d && d.labelRank !== undefined && d.labelRank < LABEL_RANK_LIMIT;
         },
         color: (context) => {
-          if (activePoint !== null && context.dataIndex !== activePoint)
+          if (activePoint !== null && !isFocusedPoint(context.dataIndex))
             return "rgba(0,0,0,0.1)";
           return "#333";
         },
@@ -1432,6 +1462,62 @@ function focusChartOn(dataItem) {
   scales.y.max = panView.yMax;
 }
 
+/**
+ * 선택한 점과 같은 화면 안에서 가장 가까운 숨김 이름표를 찾습니다.
+ * 축마다 단위가 다르므로 현재 화면 폭·높이로 정규화한 거리로 비교합니다.
+ */
+function nearbyLabelIndexes(targetIndex) {
+  if (!isXpUi() || isHistogram()) return new Set();
+
+  const data = myChart.data.datasets[0].data;
+  const target = data[targetIndex];
+  if (!target || !Number.isFinite(target.x) || !Number.isFinite(target.y)) {
+    return new Set();
+  }
+
+  const optionScales = myChart.options.scales;
+  const xMin = Number.isFinite(optionScales.x.min)
+    ? optionScales.x.min
+    : myChart.scales.x.min;
+  const xMax = Number.isFinite(optionScales.x.max)
+    ? optionScales.x.max
+    : myChart.scales.x.max;
+  const yMin = Number.isFinite(optionScales.y.min)
+    ? optionScales.y.min
+    : myChart.scales.y.min;
+  const yMax = Number.isFinite(optionScales.y.max)
+    ? optionScales.y.max
+    : myChart.scales.y.max;
+  const xSpan = Math.max(xMax - xMin, Number.EPSILON);
+  const ySpan = Math.max(yMax - yMin, Number.EPSILON);
+
+  return new Set(
+    data
+      .map((item, index) => ({ item, index }))
+      .filter(({ item, index }) => {
+        if (index === targetIndex || item.labelRank < LABEL_RANK_LIMIT) {
+          return false;
+        }
+        return (
+          Number.isFinite(item.x) &&
+          Number.isFinite(item.y) &&
+          item.x >= xMin &&
+          item.x <= xMax &&
+          item.y >= yMin &&
+          item.y <= yMax
+        );
+      })
+      .map(({ item, index }) => ({
+        index,
+        distance:
+          Math.hypot((item.x - target.x) / xSpan, (item.y - target.y) / ySpan),
+      }))
+      .sort((a, b) => a.distance - b.distance)
+      .slice(0, COMPARISON_LABEL_LIMIT)
+      .map(({ index }) => index),
+  );
+}
+
 document.getElementById("xZoomBtn").addEventListener("click", function () {
   isXZoomed = !isXZoomed;
   panView = null;
@@ -1690,19 +1776,22 @@ function renderRanking() {
 
       // 3. 차트 하이라이트 & 툴팁 활성화
       activePoint = index;
+      comparisonPointIndexes = nearbyLabelIndexes(index);
       myChart.tooltip.setActiveElements([{ datasetIndex: 0, index: index }]);
       myChart.setActiveElements([{ datasetIndex: 0, index: index }]);
       myChart.update();
 
       // 4. 3초 뒤에 포커스 해제 예약
       chartFocusTimeout = setTimeout(() => {
+        chartFocusTimeout = null;
         activePoint = null; // 점선(Crosshair) 제거
+        comparisonPointIndexes.clear();
         myChart.tooltip.setActiveElements([]); // 툴팁 숨기기
         myChart.setActiveElements([]); // 점 활성화 해제
         myChart.update();
         // 이동했다면 '화면 밖 N명' 안내를 갱신
         updateZoomHint();
-      }, 1500);
+      }, 3000);
     };
 
     listContainer.appendChild(li);
@@ -1891,10 +1980,7 @@ function renderSpeedrun() {
   // 4. 데이터 가공
   const speedrunData = combinedData.map((item) => {
     // 이름으로 찾아보고, 없으면 뒤에 '*'를 붙여서 다시 찾아봄
-    const color =
-      STREAMER_COLORS[item.name] ||
-      STREAMER_COLORS[item.name + "*"] ||
-      DEFAULT_COLOR;
+    const color = streamerColor(item.name);
 
     return {
       ...item,
@@ -2155,6 +2241,11 @@ function syncChartControls() {
     // (축의 의미가 달라져 이전 범위를 유지하면 엉뚱한 곳을 봅니다)
     panView = null;
     activePoint = null;
+    comparisonPointIndexes.clear();
+    if (chartFocusTimeout) {
+      clearTimeout(chartFocusTimeout);
+      chartFocusTimeout = null;
+    }
     updateChart();
     // Chart.js 는 scriptable 옵션 결과를 캐시합니다. 리그가 바뀌면
     // 막대/점이 서로 다른 설정을 써야 하므로 캐시를 비웁니다.
