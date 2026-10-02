@@ -1,4 +1,5 @@
 const STREAMER_COLORS = {
+  "블레어 로즈*": "#CA4844",
   "류시호 RyuSiho": "#ffe1a9",
   "연이*": "#b3d5ee",
   비웬: "#F79308",
@@ -1123,6 +1124,15 @@ const RETRY_DATA = [
     channelUrl: "https://chzzk.naver.com/a9a343510e132ea3026ff3cf682820b5",
     clipUrl: "https://chzzk.naver.com/clips/aLdblpHdxx",
   },
+  {
+    name: "블레어 로즈*",
+    gameTime: "12분 4.61초",
+    tosTime: "12시간 58분 11초",
+    addedAt: "2026-10-02T04:13:05.236Z",
+    channelUrl: "https://chzzk.naver.com/live/dae2de8eaa005a59163f2e4c045e1aa1",
+    clipUrl: "https://chzzk.naver.com/clips/oaFnunZTi1",
+    vodUrl: "https://chzzk.naver.com/video/15476315?currentTime=58575",
+  },
 ];
 
 const SHORTCUT_DATA = [
@@ -1648,7 +1658,7 @@ const SHORTCUT_DATA = [
     clipUrl: "https://chzzk.naver.com/clips/PVxbiSCb6f",
   },
   {
-    name: "블레어 로즈",
+    name: "블레어 로즈🎈",
     gameTime: "32분 20.66초",
     tosTime: "10시간 6분 8초",
     addedAt: "2026-10-01T21:45:39.425Z",
